@@ -10,7 +10,7 @@ const Signup = () => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  // ✅ Handle Signup
+  // Handle Signup
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(""); // Clear previous errors
@@ -31,7 +31,7 @@ const Signup = () => {
   return (
     <div className="font-[sans-serif] bg-white max-w-4xl flex items-center mx-auto md:h-screen p-4">
       <div className="grid md:grid-cols-3 items-center shadow-[0_2px_10px_-3px_rgba(6,81,237,0.3)] rounded-xl overflow-hidden">
-        {/* ✅ Lumeo Information Section */}
+        {/* Lumeo Information Section */}
         <div className="max-md:order-1 flex flex-col justify-center space-y-8 min-h-full bg-gradient-to-r from-gray-900 to-gray-700 lg:px-8 px-4 py-4">
           <div>
             <h4 className="text-white text-lg">Join Lumeo Today</h4>
@@ -49,7 +49,7 @@ const Signup = () => {
           </div>
         </div>
 
-        {/* ✅ Signup Form */}
+        {/*  Signup Form */}
         <form
           onSubmit={handleSignup}
           className="md:col-span-2 w-full py-6 px-6 sm:px-16 max-md:max-w-xl mx-auto"
