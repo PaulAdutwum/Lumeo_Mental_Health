@@ -6,7 +6,7 @@
     "node": "18.x"
   },
   "scripts": {
-    "start": "node server/index.js",
+    "start": "./start-server.sh",
     "start:dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "nodemon server/index.js",
     "client:dev": "vite",
@@ -64,6 +64,8 @@
     "@types/react": "^18.3.20",
     "@types/react-dom": "^18.2.7",
     "@types/react-youtube": "^7.6.2",
+    "@types/uglify-js": "^3.17.5",
+    "@types/webpack": "^5.28.5",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",

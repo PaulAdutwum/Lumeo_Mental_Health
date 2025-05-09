@@ -9,18 +9,131 @@ import OpenAI from 'openai';
 import { Pool } from 'pg';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import fs from 'fs';
+import axios from 'axios';
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from .env.local first, then fall back to .env
+const envLocalPath = path.resolve(process.cwd(), '.env.local');
+const envPath = path.resolve(process.cwd(), '.env');
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+if (fs.existsSync(envLocalPath)) {
+  console.log('Loading environment variables from .env.local');
+  dotenv.config({ path: envLocalPath });
+} else if (fs.existsSync(envPath)) {
+  console.log('Loading environment variables from .env');
+  dotenv.config({ path: envPath });
+} else {
+  console.warn('No .env or .env.local file found');
+  dotenv.config();
+}
+
+// Log available API keys (don't log the actual keys, just if they exist)
+console.log('OPENAI_API_KEY available:', !!process.env.OPENAI_API_KEY);
+console.log('YOUTUBE_API_KEY available:', !!(process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY));
+console.log('FIREBASE_API_KEY available:', !!process.env.VITE_FIREBASE_API_KEY);
+
+// Initialize OpenAI with fallback
+const openai = process.env.OPENAI_API_KEY 
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
+
+if (!process.env.OPENAI_API_KEY) {
+  console.warn('Warning: OPENAI_API_KEY environment variable is not set. AI features will be limited.');
+}
+
+// Simple YouTube service implementation
+const youtubeService = {
+  getVideoRecommendations: async (userId, emotion, limit) => {
+    try {
+      const youtubeApiKey = process.env.YOUTUBE_API_KEY || process.env.VITE_YOUTUBE_API_KEY;
+      
+      if (!youtubeApiKey) {
+        console.warn('YouTube API key not available');
+        return getFallbackVideos();
+      }
+      
+      // Map emotions to relevant search terms
+      const emotionMap = {
+        anxiety: 'meditation for anxiety relief breathing exercises',
+        sadness: 'uplifting meditation positive affirmations guided imagery',
+        anger: 'calming meditation stress reduction mindfulness',
+        fear: 'anxiety relief guided meditation safe space visualization',
+        joy: 'positive meditation mindfulness gratitude practice',
+        neutral: 'meditation mindfulness relaxation techniques'
+      };
+      
+      const searchTerms = emotionMap[emotion?.toLowerCase()] || 'therapeutic meditation relaxation';
+      
+      const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+        params: {
+          key: youtubeApiKey,
+          q: searchTerms,
+          part: 'snippet',
+          maxResults: limit || 6,
+          type: 'video',
+          videoEmbeddable: true,
+          videoDuration: 'medium', // 4-20 minutes
+          relevanceLanguage: 'en',
+          safeSearch: 'strict'
+        }
+      });
+      
+      if (!response.data || !response.data.items || response.data.items.length === 0) {
+        return getFallbackVideos();
+      }
+      
+      return response.data.items.map(item => ({
+        videoId: item.id.videoId,
+        title: item.snippet.title,
+        thumbnailUrl: item.snippet.thumbnails.medium.url,
+        description: item.snippet.description
+      }));
+    } catch (error) {
+      console.error('Error fetching YouTube videos:', error.message);
+      return getFallbackVideos();
+    }
+  },
+  logVideoWatch: async (userId, videoId, title, emotionBefore) => {
+    console.log(`User ${userId} watched video ${videoId}: ${title}`);
+    return true;
+  },
+  updateVideoFeedback: async (userId, videoId, feedback, emotionAfter) => {
+    console.log(`User ${userId} gave ${feedback} feedback for video ${videoId}`);
+    return true;
+  },
+  saveUserVideoPreferences: async (userId, categories) => {
+    console.log(`User ${userId} preferences updated: ${categories.join(', ')}`);
+    return true;
+  }
+};
+
+// Fallback videos if YouTube API fails
+function getFallbackVideos() {
+  return [
+    {
+      videoId: 'O-6f5wQXSu8',
+      title: 'Guided Meditation for Anxiety & Stress Relief',
+      thumbnailUrl: 'https://img.youtube.com/vi/O-6f5wQXSu8/mqdefault.jpg',
+      description: 'A calming meditation to help reduce anxiety and stress.'
+    },
+    {
+      videoId: 'aXItOY0sLRY',
+      title: 'Relaxing Nature Sounds - Forest Birds Singing',
+      thumbnailUrl: 'https://img.youtube.com/vi/aXItOY0sLRY/mqdefault.jpg',
+      description: 'Peaceful nature sounds to help you relax and focus.'
+    },
+    {
+      videoId: 'inpok4MKVLM',
+      title: '5-Minute Meditation You Can Do Anywhere',
+      thumbnailUrl: 'https://img.youtube.com/vi/inpok4MKVLM/mqdefault.jpg',
+      description: 'Quick meditation practice for busy days.'
+    }
+  ];
+}
 
 // Create Express app
 const app = express();
@@ -62,10 +175,8 @@ io.on('connection', (socket) => {
   // Listen for user messages about the canvas
   socket.on('user-message', async (data) => {
     try {
-    
-      
       // Process with OpenAI if API key is available
-      if (process.env.OPENAI_API_KEY) {
+      if (openai) {
         const canvasState = data.canvasState ? `The user's canvas has these elements: ${JSON.stringify(data.canvasState.objects?.length || 0)} objects.` : '';
         
         const response = await openai.chat.completions.create({
@@ -134,17 +245,21 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
 
-// Initialize PostgreSQL connection pool
-const pool = new Pool({
+// Initialize PostgreSQL connection pool if URL exists
+const pool = process.env.POSTGRES_URL ? new Pool({
   connectionString: process.env.POSTGRES_URL,
   ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : false
-});
+}) : null;
 
 // Verify database connection
 app.get('/api/health', async (req, res) => {
   try {
-    const result = await pool.query('SELECT NOW()');
-    res.json({ status: 'ok', timestamp: result.rows[0].now });
+    if (pool) {
+      const result = await pool.query('SELECT NOW()');
+      res.json({ status: 'ok', timestamp: result.rows[0].now });
+    } else {
+      res.json({ status: 'ok', timestamp: new Date(), db: 'not configured' });
+    }
   } catch (error) {
     console.error('Database connection error:', error);
     res.status(500).json({ status: 'error', message: error.message });
@@ -231,6 +346,22 @@ app.post('/api/videos/preferences', async (req, res) => {
 
 // Start the server
 const PORT = process.env.PORT || 3001;
+
+// Check if port is in use and try another one if needed
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.log(`Port ${PORT} is in use, trying another one...`);
+    setTimeout(() => {
+      server.close();
+      server.listen(0); // Let the OS assign an available port
+    }, 1000);
+  } else {
+    console.error('Server error:', e);
+  }
+});
+
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  const address = server.address();
+  const actualPort = typeof address === 'object' ? address.port : PORT;
+  console.log(`Server running on port ${actualPort}`);
 }); 
