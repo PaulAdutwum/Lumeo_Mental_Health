@@ -185,7 +185,7 @@ const Login = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
           >
             Your personal AI companion for mental wellbeing, emotional support,
-            and creative expression — here for you, anytime you need it.
+            and creative expression here for you, anytime you need it.
           </motion.p>
         </div>
 
