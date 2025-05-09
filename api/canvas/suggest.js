@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { createCanvas, loadImage } from '@napi-rs/canvas';
+
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     
     // Load the image for basic analysis
     const image = await loadImage(buffer);
-    const canvas = createCanvas(image.width, image.height);
-    const ctx = canvas.getContext('2d');
+   
+   
     ctx.drawImage(image, 0, 0);
     
     // Perform basic analysis to detect colors, density, and complexity

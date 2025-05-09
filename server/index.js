@@ -163,10 +163,10 @@ const io = new Server(server, {
 
 // Import API routes
 import mediaGenRoutes from './api/media-gen/image.js';
-import canvasSuggestRoutes from './api/canvas/suggest.js';
+
 
 app.use('/api/media-gen/image', mediaGenRoutes);
-app.use('/api/canvas/suggest', canvasSuggestRoutes);
+
 
 // Socket.io event handling
 io.on('connection', (socket) => {
