@@ -32,7 +32,7 @@ import aiService, { ChatMessage, EmotionAnalysis } from "../services/ai";
 import { saveMoodEntry } from "../services/moodTracking";
 import TherapeuticImageGenerator from "./TherapeuticImageGenerator";
 import VideoRecommendations from "./VideoRecommendations";
-import DrawingCanvas from "./DrawingCanvas";
+// Keep import for future use but comment to show it's inactive
 import MusicPage from "./MusicPage";
 import SimpleVideoPlayer from "./SimpleVideoPlayer";
 
@@ -100,7 +100,8 @@ const Chat: React.FC = () => {
   const [showVideoRecommendations, setShowVideoRecommendations] =
     useState(false);
   const [showMusicPlayer, setShowMusicPlayer] = useState(false);
-  const [showCanvas, setShowCanvas] = useState(false);
+  // Canvas state - temporarily disabled
+  // const [showCanvas, setShowCanvas] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -186,7 +187,6 @@ const Chat: React.FC = () => {
       description: "Draw with AI assistance",
       action: () => {
         setActiveTool("canvas");
-        // We'll implement the canvas feature below
         showDrawingCanvas();
       },
     },
@@ -214,7 +214,11 @@ const Chat: React.FC = () => {
 
   // Function to show the drawing canvas
   const showDrawingCanvas = () => {
-    setShowCanvas(true);
+    // Instead of showing the actual canvas, display a coming soon message
+    alert(
+      "Drawing Canvas coming soon! This feature is currently under development."
+    );
+    // Not setting showCanvas to true so the actual canvas component won't be rendered
   };
 
   // Start a breathing exercise
@@ -938,15 +942,6 @@ const Chat: React.FC = () => {
         {showVideoRecommendations && (
           <SimpleVideoPlayer
             onClose={() => setShowVideoRecommendations(false)}
-          />
-        )}
-
-        {showCanvas && (
-          <DrawingCanvas
-            onClose={() => {
-              setShowCanvas(false);
-              navigate("/main");
-            }}
           />
         )}
 

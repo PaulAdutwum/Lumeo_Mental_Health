@@ -4,10 +4,25 @@ import Signup from "./components/Signup";
 import MainPage from "./components/MainPage";
 import MovieGenerator from "./components/MovieGenerator";
 import Chat from "./components/Chat";
-import DrawingCanvas from "./components/DrawingCanvas";
 import MusicPage from "./components/MusicPage";
 import SimpleVideoPlayer from "./components/SimpleVideoPlayer";
 import "./index.css";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
+// Simple component that shows a message and redirects
+const CanvasComingSoon = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    alert(
+      "Drawing Canvas coming soon! This feature is currently under development."
+    );
+    navigate("/main");
+  }, [navigate]);
+
+  return null;
+};
 
 const App = () => {
   return (
@@ -21,12 +36,7 @@ const App = () => {
         <Route path="/wellness-videos" element={<SimpleVideoPlayer />} />
         <Route path="/generate-movies" element={<MovieGenerator />} />
         <Route path="/chat" element={<Chat />} />
-        <Route
-          path="/canvas"
-          element={
-            <DrawingCanvas onClose={() => window.location.replace("/main")} />
-          }
-        />
+        <Route path="/canvas" element={<CanvasComingSoon />} />
       </Routes>
     </Router>
   );

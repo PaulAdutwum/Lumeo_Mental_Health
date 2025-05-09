@@ -16,12 +16,24 @@ RUN apt-get update -qq && \
     libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Install TypeScript globally to ensure tsc is available
+RUN npm install -g typescript
+
 # Install all npm deps
 COPY package*.json ./
 RUN npm ci
 
-# Copy everything and build the front-end
-COPY . .
+# Copy config files
+COPY tsconfig*.json ./
+COPY vite.config.ts ./
+
+# Copy source files
+COPY public ./public
+COPY src ./src
+COPY server-esm.js ./
+COPY .env* ./
+
+# Build the front-end
 RUN npm run build
 
 ############################################
@@ -33,16 +45,21 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=5000
 
-# Copy only production deps
-COPY package*.json ./
-RUN npm ci --omit=dev
+# Install OS-level deps needed for runtime
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+    libcairo2 libpango-1.0-0 libjpeg62-turbo libgif7 librsvg2-2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy runtime files
+COPY package.json ./
+RUN npm install --omit=dev express
 
 # Copy built front-end and server code
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server.js ./server.js
-# If you have other server files or folders, e.g. /server, copy them too:
-COPY --from=builder /app/server ./server
+COPY --from=builder /app/server-esm.js ./server.js
+COPY --from=builder /app/.env* ./
 
 # Expose & run
 EXPOSE 5000
-CMD ["node", "server.js"]
+CMD ["node", "server/ index.js"]
