@@ -177,18 +177,16 @@ io.on('connection', (socket) => {
     try {
       // Process with OpenAI if API key is available
       if (openai) {
-        const canvasState = data.canvasState ? `The user's canvas has these elements: ${JSON.stringify(data.canvasState.objects?.length || 0)} objects.` : '';
-        
         const response = await openai.chat.completions.create({
           model: 'gpt-4o',
           messages: [
             {
               role: 'system',
-              content: 'You are an AI drawing assistant. You help users improve their drawings by providing helpful suggestions and feedback. Keep responses brief, friendly, and specific to the drawing.'
+              content: 'You are an AI assistant. You help users by providing helpful suggestions and feedback. Keep responses brief, friendly, and specific.'
             },
             {
               role: 'user',
-              content: `${data.text}\n\n${canvasState}`
+              content: data.text
             }
           ],
           temperature: 0.7,
@@ -201,36 +199,11 @@ io.on('connection', (socket) => {
         socket.emit('ai-message', aiMessage);
       } else {
         // Fallback if no API key
-        socket.emit('ai-message', "I notice you're working on a drawing. If you need specific suggestions, please let me know what you're trying to create.");
+        socket.emit('ai-message', "I'm here to help. If you need specific suggestions, please let me know what you're looking for.");
       }
     } catch (error) {
       console.error('Error processing message:', error);
       socket.emit('ai-message', "I'm having trouble processing your message. Please try again later.");
-    }
-  });
-  
-  // Listen for canvas events
-  socket.on('canvas-event', (data) => {
-    console.log('Canvas event:', data.type);
-    
-    // Process different event types
-    if (data.type === 'CREATE_OBJECT') {
-      // When user creates a new object
-      socket.emit('ai-message', `I see you've added a ${data.metadata?.type || 'new element'} to your drawing. Looking good!`);
-    } else if (data.type === 'CLEAR') {
-      // When user clears the canvas
-      socket.emit('ai-message', "Starting fresh with a clean canvas? What are you planning to create?");
-    }
-  });
-  
-  // Listen for canvas analysis
-  socket.on('canvas-analysis', (data) => {
-    console.log('Canvas analysis:', data.objectCount, 'objects detected');
-    
-    if (data.objectCount > 0) {
-      socket.emit('ai-message', `I've detected ${data.objectCount} objects in your drawing. If you need suggestions for what to add next, just ask!`);
-    } else {
-      socket.emit('ai-message', "I don't see many distinct elements in your drawing yet. Try adding some shapes or lines to get started.");
     }
   });
   
