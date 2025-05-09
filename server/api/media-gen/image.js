@@ -1,9 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const axios = require('axios');
-const dotenv = require('dotenv');
+import express from 'express';
+import axios from 'axios';
+import dotenv from 'dotenv';
 
 dotenv.config();
+
+const router = express.Router();
 
 // Image generation API endpoint
 router.post('/', async (req, res) => {
@@ -98,4 +99,4 @@ router.get('/fallback', (req, res) => {
   });
 });
 
-module.exports = router; 
+export default router; 

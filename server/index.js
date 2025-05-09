@@ -1,12 +1,18 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const path = require('path');
-const dotenv = require('dotenv');
-const OpenAI = require('openai');
-const { Pool } = require('pg');
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import path from 'path';
+import dotenv from 'dotenv';
+import OpenAI from 'openai';
+import { Pool } from 'pg';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -35,16 +41,16 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 // Initialize Socket.io
-const io = socketIo(server, {
+const io = new Server(server, {
   cors: {
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
     methods: ['GET', 'POST']
   }
 });
 
-// Configure API routes
-const mediaGenRoutes = require('./api/media-gen/image');
-const canvasSuggestRoutes = require('./api/canvas/suggest');
+// Import API routes
+import mediaGenRoutes from './api/media-gen/image.js';
+import canvasSuggestRoutes from './api/canvas/suggest.js';
 
 app.use('/api/media-gen/image', mediaGenRoutes);
 app.use('/api/canvas/suggest', canvasSuggestRoutes);

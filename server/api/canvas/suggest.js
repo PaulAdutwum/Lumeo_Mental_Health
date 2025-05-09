@@ -1,10 +1,11 @@
-const express = require('express');
-const router = express.Router();
-const axios = require('axios');
-const dotenv = require('dotenv');
-const { createCanvas, loadImage } = require('canvas');
+import express from 'express';
+import axios from 'axios';
+import dotenv from 'dotenv';
+import { createCanvas, loadImage } from '@napi-rs/canvas';
 
 dotenv.config();
+
+const router = express.Router();
 
 // Canvas analysis and suggestion API endpoint
 router.post('/', async (req, res) => {
@@ -174,4 +175,4 @@ function analyzeImage(ctx, width, height) {
   };
 }
 
-module.exports = router; 
+export default router; 
