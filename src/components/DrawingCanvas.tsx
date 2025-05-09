@@ -47,7 +47,10 @@ import {
   FaPauseCircle,
   FaArrowLeft,
   FaPaperPlane,
+  FaFont,
+  FaMinus,
 } from "react-icons/fa";
+import { BsHighlighter } from "react-icons/bs";
 import axios from "axios";
 import { io, Socket } from "socket.io-client";
 import * as fabric from "fabric";
@@ -82,6 +85,7 @@ interface Window {
     };
   };
   onYouTubeIframeAPIReady: () => void;
+  cv?: any; // Add OpenCV global object
 }
 
 declare global {
@@ -111,9 +115,17 @@ interface FabricImage extends fabric.Image {
 
 const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
   const [tool, setTool] = useState<
-    "pen" | "eraser" | "rect" | "circle" | "arrow"
+    | "pen"
+    | "eraser"
+    | "rect"
+    | "circle"
+    | "arrow"
+    | "text"
+    | "brush"
+    | "highlighter"
+    | "line"
   >("pen");
-  const [color, setColor] = useState<string>("#000000");
+  const [color, setColor] = useState<string>("#3182ce");
   const [fillColor, setFillColor] = useState<string>("#ffffff");
   const [strokeWidth, setStrokeWidth] = useState<number>(5);
   const [history, setHistory] = useState<string[]>([]);
@@ -186,7 +198,7 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
       bg: "rgba(255, 255, 255, 0.97)",
       text: "gray.800",
       border: "gray.200",
-      canvas: "#ffffff",
+      canvas: "#f8f9fa",
       panel: "white",
       shadow: "0 1px 3px rgba(0,0,0,0.12)",
     },
@@ -271,10 +283,14 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
   // Tools to choose from
   const tools = [
     { id: "pen", name: "Pen", icon: <FaPencilAlt /> },
+    { id: "brush", name: "Brush", icon: <FaPaintBrush /> },
+    { id: "highlighter", name: "Highlighter", icon: <BsHighlighter /> },
     { id: "eraser", name: "Eraser", icon: <FaEraser /> },
+    { id: "line", name: "Line", icon: <FaMinus /> },
     { id: "rect", name: "Rectangle", icon: <FaSquare /> },
     { id: "circle", name: "Circle", icon: <FaCircle /> },
     { id: "arrow", name: "Arrow", icon: <FaLongArrowAltRight /> },
+    { id: "text", name: "Text", icon: <FaFont /> },
   ];
 
   // Save canvas state to history
@@ -294,12 +310,38 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
   // Handle mouse down event for shape creation
   const handleMouseDown = useCallback(
     (opt: FabricPointerEvent) => {
-      if (tool === "pen" || tool === "eraser" || !canvasReady) return;
+      if (
+        tool === "pen" ||
+        tool === "eraser" ||
+        tool === "brush" ||
+        tool === "highlighter" ||
+        !canvasReady
+      )
+        return;
       if (!fabricCanvasRef.current) return;
 
       const canvas = fabricCanvasRef.current;
       const pointer = canvas.getPointer(opt.e);
       startPointRef.current = { x: pointer.x, y: pointer.y };
+
+      if (tool === "text") {
+        const text = new fabric.IText("Click to edit text", {
+          left: pointer.x,
+          top: pointer.y,
+          fontFamily: "Arial",
+          fill: color,
+          fontSize: strokeWidth * 3,
+          selectable: true,
+          editable: true,
+        });
+        canvas.add(text);
+        canvas.setActiveObject(text);
+        text.enterEditing();
+        canvas.renderAll();
+        activeObjectRef.current = null;
+        saveToHistory();
+        return;
+      }
 
       if (tool === "rect") {
         const rect = new fabric.Rect({
@@ -343,11 +385,24 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
         canvas.add(line);
         activeObjectRef.current = line;
         canvas.renderAll();
+      } else if (tool === "line") {
+        const line = new fabric.Line(
+          [pointer.x, pointer.y, pointer.x, pointer.y],
+          {
+            stroke: color,
+            strokeWidth: strokeWidth,
+            selectable: false,
+            evented: false,
+          }
+        );
+        canvas.add(line);
+        activeObjectRef.current = line;
+        canvas.renderAll();
       }
 
       setIsDrawing(true);
     },
-    [tool, color, fillColor, strokeWidth, canvasReady]
+    [tool, color, fillColor, strokeWidth, canvasReady, saveToHistory]
   );
 
   // Handle mouse move for shape resizing
@@ -361,7 +416,13 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
         !canvasReady
       )
         return;
-      if (tool === "pen" || tool === "eraser") return;
+      if (
+        tool === "pen" ||
+        tool === "eraser" ||
+        tool === "brush" ||
+        tool === "highlighter"
+      )
+        return;
 
       const canvas = fabricCanvasRef.current;
       const pointer = canvas.getPointer(options.e);
@@ -401,7 +462,7 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
         });
 
         canvas.renderAll();
-      } else if (tool === "arrow") {
+      } else if (tool === "arrow" || tool === "line") {
         const line = activeObjectRef.current as fabric.Line;
 
         line.set({
@@ -409,8 +470,12 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
           y2: pointer.y,
         });
 
-        // Add arrow head (triangle) at the end
         canvas.renderAll();
+
+        // For arrow, add arrowhead at end
+        if (tool === "arrow" && activeObjectRef.current) {
+          // The following code will be added after mouseup to create arrowhead
+        }
       }
     },
     [isDrawing, tool, canvasReady]
@@ -419,14 +484,59 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
   // Handle mouse up to complete shape drawing
   const handleMouseUp = useCallback(() => {
     if (!isDrawing || !fabricCanvasRef.current || !canvasReady) return;
+    const canvas = fabricCanvasRef.current;
+
+    // For arrow tool, add arrowhead
+    if (tool === "arrow" && activeObjectRef.current) {
+      const line = activeObjectRef.current as fabric.Line;
+      const x1 = line.x1 || 0;
+      const y1 = line.y1 || 0;
+      const x2 = line.x2 || 0;
+      const y2 = line.y2 || 0;
+
+      // Calculate angle for arrowhead
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+
+      // Create arrowhead (triangle)
+      const headLength = strokeWidth * 3;
+      const arrowHead = new fabric.Triangle({
+        left: x2,
+        top: y2,
+        width: headLength,
+        height: headLength,
+        fill: color,
+        stroke: color,
+        strokeWidth: 1,
+        angle: (angle * 180) / Math.PI + 90,
+        originX: "center",
+        originY: "bottom",
+        selectable: true, // Make selectable
+        evented: true, // Allow interactions
+      });
+
+      canvas.add(arrowHead);
+    }
 
     setIsDrawing(false);
     startPointRef.current = null;
     activeObjectRef.current = null;
 
-    // Add to history
-    saveToHistory();
-  }, [isDrawing, saveToHistory, canvasReady]);
+    // Manually save to history if a shape was created
+    if (
+      tool !== "pen" &&
+      tool !== "brush" &&
+      tool !== "highlighter" &&
+      tool !== "eraser"
+    ) {
+      const json = fabricCanvasRef.current.toJSON();
+      setHistory((prev) => [...prev.slice(0, historyIndex + 1), json]);
+      setHistoryIndex((prev) => prev + 1);
+      setCanvasModified(true);
+    }
+
+    // Force render to ensure objects stay visible
+    canvas.renderAll();
+  }, [isDrawing, canvasReady, tool, strokeWidth, color, historyIndex]);
 
   // Undo function
   const handleUndo = () => {
@@ -589,122 +699,6 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
     setColorPalette(newPalette);
   };
 
-  // Add voice command handler
-  const toggleVoiceCommand = () => {
-    if (!isRecording) {
-      startVoiceRecognition();
-    } else {
-      stopVoiceRecognition();
-    }
-    setIsRecording(!isRecording);
-  };
-
-  // Voice recognition implementation
-  const startVoiceRecognition = () => {
-    if (!("webkitSpeechRecognition" in window)) {
-      alert("Voice commands are not supported in this browser");
-      return;
-    }
-
-    // No need to cast window since we've declared the global interface
-    const recognition = new window.webkitSpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onresult = (event: any) => {
-      let interimTranscript = "";
-      let finalTranscript = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-          processVoiceCommand(transcript);
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      setTranscript(finalTranscript || interimTranscript);
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error("Voice recognition error", event);
-      setIsRecording(false);
-    };
-
-    recognition.onend = () => {
-      if (isRecording) {
-        recognition.start();
-      }
-    };
-
-    recognition.start();
-    window.recognition = recognition;
-  };
-
-  const stopVoiceRecognition = () => {
-    if (window.recognition) {
-      window.recognition.stop();
-      delete window.recognition;
-    }
-  };
-
-  // Process voice commands
-  const processVoiceCommand = (command: string) => {
-    const lowerCommand = command.toLowerCase().trim();
-
-    // Simple command mapping
-    if (lowerCommand.includes("clear") || lowerCommand.includes("erase all")) {
-      handleClear();
-    } else if (lowerCommand.includes("undo")) {
-      handleUndo();
-    } else if (lowerCommand.includes("redo")) {
-      handleRedo();
-    } else if (
-      lowerCommand.includes("pencil") ||
-      lowerCommand.includes("pen")
-    ) {
-      setTool("pen");
-    } else if (lowerCommand.includes("arrow")) {
-      setTool("arrow");
-    } else if (
-      lowerCommand.includes("rectangle") ||
-      lowerCommand.includes("rect")
-    ) {
-      setTool("rect");
-    } else if (lowerCommand.includes("circle")) {
-      setTool("circle");
-    } else if (lowerCommand.includes("eraser")) {
-      setTool("eraser");
-    } else if (lowerCommand.match(/colou?r (to )?\w+/)) {
-      // Extract color from command like "color blue" or "change color to red"
-      const colorMatch = lowerCommand.match(/colou?r (to )?(\w+)/);
-      if (colorMatch && colorMatch[2]) {
-        const colorName = colorMatch[2];
-        // Map common color names to hex values
-        const colorMap: Record<string, string> = {
-          red: "#FF0000",
-          blue: "#0000FF",
-          green: "#00FF00",
-          yellow: "#FFFF00",
-          black: "#000000",
-          white: "#FFFFFF",
-          purple: "#800080",
-          orange: "#FFA500",
-          pink: "#FFC0CB",
-          brown: "#A52A2A",
-          gray: "#808080",
-          grey: "#808080",
-        };
-
-        if (colorMap[colorName]) {
-          setColor(colorMap[colorName]);
-        }
-      }
-    }
-  };
-
   // Add AI suggestion handling
   const getAISuggestion = async () => {
     if (!fabricCanvasRef.current || !canvasReady) return;
@@ -791,21 +785,49 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
 
   // Update OpenCV initialization code
   const initOpenCV = () => {
-    // Use dynamic import to load OpenCV only when needed
+    // Use dynamic import to load OpenCV
     try {
-      // @ts-ignore
-      const cv = require("opencv.js");
-      openCVRef.current = cv;
-      setIsOpenCVReady(true);
-      console.log("OpenCV.js loaded successfully");
+      // Instead of requiring opencv.js, we'll use a script tag to load it
+      if (!document.getElementById("opencv-script")) {
+        const script = document.createElement("script");
+        script.id = "opencv-script";
+        script.async = true;
+        script.src = "https://docs.opencv.org/master/opencv.js";
+        script.onload = () => {
+          // Use type assertion to handle the global OpenCV object
+          const cv = (window as any).cv;
+          if (cv) {
+            openCVRef.current = cv;
+            setIsOpenCVReady(true);
+            console.log("OpenCV.js loaded successfully");
+          }
+        };
+        script.onerror = (err) => {
+          console.warn("Failed to load OpenCV.js:", err);
+        };
+        document.body.appendChild(script);
+      } else if ((window as any).cv) {
+        // If script is already loaded but not initialized
+        openCVRef.current = (window as any).cv;
+        setIsOpenCVReady(true);
+        console.log("OpenCV.js already available");
+      }
     } catch (err) {
-      console.warn("Failed to load OpenCV.js:", err);
+      console.warn("Failed to initialize OpenCV.js:", err);
     }
   };
 
   // Initialize OpenCV when component mounts
   useEffect(() => {
     initOpenCV();
+
+    // Cleanup when component unmounts
+    return () => {
+      const script = document.getElementById("opencv-script");
+      if (script && script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
   }, []);
 
   // Fix process image function to use try/catch
@@ -1002,10 +1024,16 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
 
     initializedRef.current = true;
 
-    // Create the canvas - must be done before setting any dimensions
+    // Create the canvas with proper options
     const fabricCanvas = new fabric.Canvas(canvasRef.current, {
       isDrawingMode: true,
       backgroundColor: themeColors[theme].canvas,
+      width: containerRef.current.clientWidth,
+      height: containerRef.current.clientHeight,
+      preserveObjectStacking: true, // Ensure objects stay in the order they were created
+      stopContextMenu: true, // Prevent context menu from appearing on right-click
+      fireRightClick: true, // Enable right-click events
+      renderOnAddRemove: true, // Always render when objects are added/removed
     });
 
     fabricCanvasRef.current = fabricCanvas;
@@ -1018,7 +1046,20 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
       fabricCanvas.freeDrawingBrush = freeDrawingBrush;
     }
 
-    // Mark the canvas as ready so other functions can use it
+    // Path creation complete handler - save history when a path is finished
+    fabricCanvas.on("path:created", () => {
+      // Only save history on path creation, not during path creation
+      setTimeout(() => {
+        if (fabricCanvasRef.current) {
+          const json = fabricCanvasRef.current.toJSON();
+          setHistory((prev) => [...prev.slice(0, historyIndex + 1), json]);
+          setHistoryIndex((prev) => prev + 1);
+          setCanvasModified(true);
+        }
+      }, 0);
+    });
+
+    // Mark the canvas as ready
     setCanvasReady(true);
 
     // Save the initial state
@@ -1030,56 +1071,39 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
       }
     }, 100);
 
+    // Set up window resize event
+    const handleResize = () => {
+      if (fabricCanvasRef.current && containerRef.current) {
+        // Get current content to preserve
+        const json = fabricCanvasRef.current.toJSON();
+
+        // Update canvas dimensions
+        fabricCanvasRef.current.setWidth(containerRef.current.clientWidth);
+        fabricCanvasRef.current.setHeight(containerRef.current.clientHeight);
+
+        // Restore content
+        fabricCanvasRef.current.loadFromJSON(json, () => {
+          fabricCanvasRef.current?.renderAll();
+        });
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
     return () => {
       // Clean up
+      window.removeEventListener("resize", handleResize);
       if (fabricCanvasRef.current) {
+        fabricCanvasRef.current.off("path:created");
         fabricCanvasRef.current.dispose();
         fabricCanvasRef.current = null;
       }
       initializedRef.current = false;
       setCanvasReady(false);
     };
-  }, [color, strokeWidth, theme]);
+  }, [color, strokeWidth, theme, historyIndex]);
 
-  // Update canvas size when container size changes
-  useEffect(() => {
-    if (!containerRef.current || !fabricCanvasRef.current || !canvasReady)
-      return;
-
-    const updateCanvasSize = () => {
-      if (!containerRef.current || !fabricCanvasRef.current || !canvasReady)
-        return;
-
-      const { clientWidth, clientHeight } = containerRef.current;
-
-      // Safely set dimensions
-      try {
-        fabricCanvasRef.current.setWidth(clientWidth);
-        fabricCanvasRef.current.setHeight(clientHeight);
-
-        // Re-add grid if enabled
-        if (showGrid) {
-          addGridToCanvas();
-        }
-
-        fabricCanvasRef.current.renderAll();
-      } catch (error) {
-        console.error("Error updating canvas size:", error);
-      }
-    };
-
-    // Initial resize
-    updateCanvasSize();
-
-    // Handle window resize
-    window.addEventListener("resize", updateCanvasSize);
-
-    return () => {
-      window.removeEventListener("resize", updateCanvasSize);
-    };
-  }, [canvasReady, showGrid]);
-
-  // Update brush when tool or color changes
+  // Update brush styles when tool or color changes
   useEffect(() => {
     if (!fabricCanvasRef.current || !canvasReady) return;
 
@@ -1087,14 +1111,57 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
 
     // Configure brush - only if canvas is in drawing mode
     if (canvas.isDrawingMode && canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush.color =
-        tool === "eraser" ? themeColors[theme].canvas : color;
-      canvas.freeDrawingBrush.width =
-        tool === "eraser" ? strokeWidth * 2 : strokeWidth;
+      if (tool === "eraser") {
+        canvas.freeDrawingBrush.color = themeColors[theme].canvas;
+        canvas.freeDrawingBrush.width = strokeWidth * 2;
+      } else if (tool === "pen") {
+        canvas.freeDrawingBrush.color = color;
+        canvas.freeDrawingBrush.width = strokeWidth;
+        // Use pencil brush for pen
+        if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
+          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          canvas.freeDrawingBrush.color = color;
+          canvas.freeDrawingBrush.width = strokeWidth;
+        }
+      } else if (tool === "brush") {
+        canvas.freeDrawingBrush.color = color;
+        canvas.freeDrawingBrush.width = strokeWidth * 2;
+        // Use pencil brush with larger width
+        if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
+          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          canvas.freeDrawingBrush.color = color;
+          canvas.freeDrawingBrush.width = strokeWidth * 2;
+        }
+      } else if (tool === "highlighter") {
+        // Create semi-transparent color for highlighter
+        const rgbColor = hexToRgb(color);
+        const highlighterColor = rgbColor
+          ? `rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.4)`
+          : `${color}66`; // Add 40% opacity
+
+        canvas.freeDrawingBrush.color = highlighterColor;
+        canvas.freeDrawingBrush.width = strokeWidth * 3;
+        // Use pencil brush with transparency
+        if (!(canvas.freeDrawingBrush instanceof fabric.PencilBrush)) {
+          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          canvas.freeDrawingBrush.color = highlighterColor;
+          canvas.freeDrawingBrush.width = strokeWidth * 3;
+        }
+      }
+
+      // Ensure brush settings are properly applied
+      canvas.freeDrawingBrush.shadow = null;
     }
 
     // Configure drawing mode based on selected tool
-    canvas.isDrawingMode = tool === "pen" || tool === "eraser";
+    canvas.isDrawingMode =
+      tool === "pen" ||
+      tool === "eraser" ||
+      tool === "brush" ||
+      tool === "highlighter";
+
+    // Make sure objects are selectable, but only when not in drawing mode
+    canvas.selection = !canvas.isDrawingMode;
 
     // Setup object creation mode
     canvas.off("mouse:down", handleMouseDown);
@@ -1104,6 +1171,9 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
     canvas.on("mouse:down", handleMouseDown);
     canvas.on("mouse:move", handleMouseMove);
     canvas.on("mouse:up", handleMouseUp);
+
+    // Force canvas to re-render
+    canvas.renderAll();
 
     return () => {
       if (!canvas) return;
@@ -1123,815 +1193,17 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
     theme,
   ]);
 
-  // Update grid when toggled
-  useEffect(() => {
-    if (canvasReady && fabricCanvasRef.current) {
-      addGridToCanvas();
-    }
-  }, [showGrid, canvasReady, theme]);
-
-  // Connect to socket.io server for real-time communication
-  useEffect(() => {
-    // Connect to socket server
-    if (!socketRef.current) {
-      socketRef.current = io(
-        import.meta.env.VITE_SOCKET_URL || "http://localhost:3001"
-      );
-
-      // Listen for AI messages
-      socketRef.current.on("ai-message", (message: string) => {
-        setConversationMessages((prev) => [
-          ...prev,
-          { text: message, isAI: true, timestamp: new Date() },
-        ]);
-
-        // If we have labels enabled and the canvas is ready, add AI annotations
-        if (showConversation && fabricCanvasRef.current && canvasReady) {
-          addAIAnnotation(message);
+  // Helper function to convert hex to rgb
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
         }
-      });
-
-      // Clean up on unmount
-      return () => {
-        if (socketRef.current) {
-          socketRef.current.disconnect();
-          socketRef.current = null;
-        }
-      };
-    }
-  }, []);
-
-  // Scroll to bottom of messages when new ones arrive
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [conversationMessages]);
-
-  // Emit canvas events to the server for AI feedback
-  const emitCanvasEvent = (eventType: string, metadata?: any) => {
-    if (socketRef.current && showConversation) {
-      socketRef.current.emit("canvas-event", {
-        type: eventType,
-        metadata: metadata || {},
-        timestamp: new Date(),
-      });
-    }
+      : null;
   };
-
-  // Send a message to the AI
-  const sendMessage = () => {
-    if (!newMessage.trim() || !socketRef.current) return;
-
-    // Add user message to conversation
-    setConversationMessages((prev) => [
-      ...prev,
-      { text: newMessage, isAI: false, timestamp: new Date() },
-    ]);
-
-    // Send to server
-    socketRef.current.emit("user-message", {
-      text: newMessage,
-      canvasState: fabricCanvasRef.current
-        ? fabricCanvasRef.current.toJSON()
-        : null,
-    });
-
-    // Clear input
-    setNewMessage("");
-  };
-
-  // Add AI annotation to canvas
-  const addAIAnnotation = (message: string) => {
-    if (!fabricCanvasRef.current || !canvasReady) return;
-
-    // Create a simple speech bubble
-    const activeObj = fabricCanvasRef.current.getActiveObject();
-    if (activeObj) {
-      const bubbleText = new fabric.Text(
-        message.substring(0, 50) + (message.length > 50 ? "..." : ""),
-        {
-          left: activeObj.left || 100,
-          top: (activeObj.top || 100) - 50,
-          fontSize: 12,
-          fill: "#333",
-          backgroundColor: "#fff",
-          padding: 5,
-          textAlign: "center",
-        }
-      );
-
-      fabricCanvasRef.current.add(bubbleText);
-      fabricCanvasRef.current.renderAll();
-
-      // Auto-remove after 8 seconds
-      setTimeout(() => {
-        fabricCanvasRef.current?.remove(bubbleText);
-        fabricCanvasRef.current?.renderAll();
-      }, 8000);
-    }
-  };
-
-  // Toggle conversation panel
-  const toggleConversation = () => {
-    setShowConversation(!showConversation);
-  };
-
-  // Restore startAreaSelection function
-  const startAreaSelection = () => {
-    if (!fabricCanvasRef.current || !canvasReady) return;
-
-    const canvas = fabricCanvasRef.current;
-
-    // Disable all objects to allow selection
-    canvas.discardActiveObject();
-    canvas.forEachObject((obj) => {
-      obj.selectable = false;
-    });
-
-    // Create a selection rectangle
-    const selectionRect = new fabric.Rect({
-      left: 50,
-      top: 50,
-      width: 200,
-      height: 200,
-      fill: "rgba(0,0,255,0.1)",
-      stroke: "blue",
-      strokeWidth: 2,
-      strokeDashArray: [5, 5],
-      selectable: true,
-      cornerColor: "blue",
-    });
-
-    canvas.add(selectionRect);
-    canvas.setActiveObject(selectionRect);
-    canvas.renderAll();
-
-    setSelectionMode(true);
-    setSelectedArea({
-      x: 50,
-      y: 50,
-      width: 200,
-      height: 200,
-    });
-  };
-
-  // Fix analyzeCanvasWithOpenCV function with proper null checks
-  const analyzeCanvasWithOpenCV = () => {
-    if (!isOpenCVReady || !openCVRef.current || !fabricCanvasRef.current) {
-      console.warn("OpenCV not ready or canvas not available");
-      return null;
-    }
-
-    const canvas = fabricCanvasRef.current;
-
-    try {
-      const cv = openCVRef.current;
-
-      // Get canvas data URL
-      const dataURL = canvas.toDataURL({
-        format: "png",
-        multiplier: 1,
-      });
-
-      // Create an image from the data URL
-      const img = new Image();
-      img.src = dataURL;
-
-      img.onload = () => {
-        if (!canvas) return null;
-
-        // Create an OpenCV matrix from the image
-        const src = cv.imread(img);
-
-        // Create a destination matrix
-        const dst = new cv.Mat();
-
-        // Convert to grayscale
-        cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
-
-        // Apply Canny edge detection
-        const edges = new cv.Mat();
-        cv.Canny(dst, edges, 50, 150);
-
-        // Find contours
-        const contours = new cv.MatVector();
-        const hierarchy = new cv.Mat();
-        cv.findContours(
-          edges,
-          contours,
-          hierarchy,
-          cv.RETR_EXTERNAL,
-          cv.CHAIN_APPROX_SIMPLE
-        );
-
-        console.log(`Canvas analysis: found ${contours.size()} objects`);
-
-        // Get the bounding boxes of detected objects
-        const objects: Array<{
-          x: number;
-          y: number;
-          width: number;
-          height: number;
-        }> = [];
-        for (let i = 0; i < contours.size(); i++) {
-          const contour = contours.get(i);
-          const rect = cv.boundingRect(contour);
-          objects.push({
-            x: rect.x,
-            y: rect.y,
-            width: rect.width,
-            height: rect.height,
-          });
-        }
-
-        // Clean up
-        src.delete();
-        dst.delete();
-        edges.delete();
-        contours.delete();
-        hierarchy.delete();
-
-        // Highlight detected objects on canvas
-        if (canvas) {
-          objects.forEach((obj) => {
-            const rect = new fabric.Rect({
-              left: obj.x,
-              top: obj.y,
-              width: obj.width,
-              height: obj.height,
-              fill: "transparent",
-              stroke: "#FF4500",
-              strokeWidth: 2,
-              strokeDashArray: [5, 5],
-              selectable: false,
-            });
-            canvas.add(rect);
-          });
-          canvas.renderAll();
-
-          // Also display a message about detected objects
-          if (objects.length > 0) {
-            const label = new fabric.Text(`Found ${objects.length} objects`, {
-              left: 20,
-              top: 20,
-              fontSize: 18,
-              fill: "#FF4500",
-              backgroundColor: "rgba(255,255,255,0.7)",
-              padding: 5,
-            });
-            canvas.add(label);
-
-            // Remove the label after 3 seconds
-            setTimeout(() => {
-              canvas.remove(label);
-              canvas.renderAll();
-            }, 3000);
-          }
-        }
-
-        // Return analysis results
-        if (socketRef.current && showConversation) {
-          socketRef.current.emit("canvas-analysis", {
-            objectCount: objects.length,
-            objects: objects,
-          });
-        }
-
-        return objects;
-      };
-    } catch (error) {
-      console.error("Error analyzing canvas with OpenCV:", error);
-      return null;
-    }
-  };
-
-  // Add a helper function to safely access the canvas
-  const safeCanvas = () => {
-    if (!fabricCanvasRef.current) {
-      console.warn("Canvas not initialized");
-      return null;
-    }
-    return fabricCanvasRef.current;
-  };
-
-  const addTextLabel = () => {
-    if (!fabricCanvasRef.current) {
-      console.warn("Canvas is not initialized");
-      return;
-    }
-
-    const text = prompt("Enter your text:");
-    if (!text) return;
-
-    const label = new fabric.IText(text, {
-      left: 100,
-      top: 100,
-      fontFamily: "Arial",
-      fill: color,
-      fontSize: 20,
-    });
-
-    fabricCanvasRef.current.add(label);
-    fabricCanvasRef.current.renderAll();
-
-    // Save to history
-    saveToHistory();
-  };
-
-  // Add these new functions for sketch recognition and enhancement
-  const recognizeAndEnhanceSketch = () => {
-    if (
-      !isOpenCVReady ||
-      !openCVRef.current ||
-      !fabricCanvasRef.current ||
-      !canvasReady
-    ) {
-      console.warn("OpenCV not ready or canvas not available");
-      return;
-    }
-
-    try {
-      const cv = openCVRef.current;
-      const canvas = fabricCanvasRef.current;
-
-      // Get canvas data
-      const dataURL = canvas.toDataURL({ format: "png", multiplier: 1 });
-
-      // Create an image from data URL
-      const img = new Image();
-      img.src = dataURL;
-
-      img.onload = () => {
-        // Create canvas element for OpenCV processing
-        const inputCanvas = document.createElement("canvas");
-        inputCanvas.width = img.width;
-        inputCanvas.height = img.height;
-        const ctx = inputCanvas.getContext("2d");
-        if (!ctx) return;
-
-        // Draw image on canvas
-        ctx.drawImage(img, 0, 0);
-
-        // Process with OpenCV
-        const src = cv.imread(inputCanvas);
-        const dst = new cv.Mat();
-
-        // Convert to grayscale
-        cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
-
-        // Apply Gaussian blur to reduce noise
-        const blurred = new cv.Mat();
-        cv.GaussianBlur(
-          dst,
-          blurred,
-          new cv.Size(5, 5),
-          0,
-          0,
-          cv.BORDER_DEFAULT
-        );
-
-        // Apply Canny edge detection
-        const edges = new cv.Mat();
-        cv.Canny(blurred, edges, 50, 150);
-
-        // Find contours
-        const contours = new cv.MatVector();
-        const hierarchy = new cv.Mat();
-        cv.findContours(
-          edges,
-          contours,
-          hierarchy,
-          cv.RETR_EXTERNAL,
-          cv.CHAIN_APPROX_SIMPLE
-        );
-
-        // Define shape type
-        interface DetectedShape {
-          type: string;
-          contour: any; // OpenCV contour object
-          rect: {
-            x: number;
-            y: number;
-            width: number;
-            height: number;
-          };
-        }
-
-        // Recognize shapes
-        const shapes: DetectedShape[] = [];
-        for (let i = 0; i < contours.size(); i++) {
-          const contour = contours.get(i);
-          const perimeter = cv.arcLength(contour, true);
-          const approx = new cv.Mat();
-          cv.approxPolyDP(contour, approx, 0.04 * perimeter, true);
-
-          // Get bounding rectangle
-          const rect = cv.boundingRect(contour);
-
-          // Determine shape based on number of vertices
-          let shapeName = "unknown";
-          if (approx.rows === 3) {
-            shapeName = "triangle";
-          } else if (approx.rows === 4) {
-            // Check if it's a square or rectangle
-            const aspectRatio = rect.width / rect.height;
-            if (aspectRatio >= 0.95 && aspectRatio <= 1.05) {
-              shapeName = "square";
-            } else {
-              shapeName = "rectangle";
-            }
-          } else if (approx.rows === 5) {
-            shapeName = "pentagon";
-          } else if (approx.rows === 6) {
-            shapeName = "hexagon";
-          } else if (approx.rows > 6) {
-            // Check if it's a circle
-            const area = cv.contourArea(contour);
-            const radius = perimeter / (2 * Math.PI);
-            const circleArea = Math.PI * radius * radius;
-            if (Math.abs(area / circleArea - 1) < 0.2) {
-              shapeName = "circle";
-            } else {
-              shapeName = "polygon";
-            }
-          }
-
-          shapes.push({
-            type: shapeName,
-            contour: contour,
-            rect: {
-              x: rect.x,
-              y: rect.y,
-              width: rect.width,
-              height: rect.height,
-            },
-          });
-
-          approx.delete();
-        }
-
-        // Clean up OpenCV resources
-        src.delete();
-        dst.delete();
-        blurred.delete();
-        edges.delete();
-        contours.delete();
-        hierarchy.delete();
-
-        // Apply enhancements to canvas based on detected shapes
-        enhanceShapes(shapes);
-      };
-    } catch (error) {
-      console.error("Error in sketch recognition:", error);
-    }
-  };
-
-  // Define shape interface
-  interface DetectedShape {
-    type: string;
-    contour: any; // OpenCV contour object
-    rect: {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    };
-  }
-
-  // Enhance shapes with better lines and auto-coloring
-  const enhanceShapes = (shapes: DetectedShape[]) => {
-    if (!fabricCanvasRef.current) return;
-
-    const canvas = fabricCanvasRef.current;
-
-    // Define custom Fabric object with data property
-    interface FabricObjectWithData extends fabric.Object {
-      data?: {
-        isEnhanced: boolean;
-        enhancedId: string;
-        originalShape: string;
-      };
-    }
-
-    // Get current canvas objects to avoid duplicating
-    const existingObjects = canvas.getObjects() as FabricObjectWithData[];
-    const existingShapeIds = existingObjects
-      .filter((obj) => obj.data && obj.data.isEnhanced)
-      .map((obj) => obj.data?.enhancedId || "");
-
-    // Process each detected shape
-    shapes.forEach((shape, index) => {
-      const shapeId = `enhanced-shape-${index}`;
-
-      // Skip if already enhanced
-      if (existingShapeIds.includes(shapeId)) return;
-
-      // Create fabric object based on shape type
-      let fabricShape: FabricObjectWithData;
-      const { x, y, width, height } = shape.rect;
-
-      // Color palette for auto-coloring
-      const colorPalette: { [key: string]: string } = {
-        triangle: "#FF6B6B",
-        rectangle: "#4ECDC4",
-        square: "#45B7D1",
-        circle: "#FBB13C",
-        pentagon: "#9055A2",
-        hexagon: "#D499B9",
-        polygon: "#86BBD8",
-      };
-
-      // Default color if shape type not in palette
-      const fillColor = colorPalette[shape.type] || "#DDDDDD";
-
-      switch (shape.type) {
-        case "circle":
-          const radius = Math.max(width, height) / 2;
-          fabricShape = new fabric.Circle({
-            left: x,
-            top: y,
-            radius: radius,
-            fill: "transparent",
-            stroke: fillColor,
-            strokeWidth: 2,
-            opacity: 0.7,
-          }) as FabricObjectWithData;
-          break;
-
-        case "square":
-        case "rectangle":
-          fabricShape = new fabric.Rect({
-            left: x,
-            top: y,
-            width: width,
-            height: height,
-            fill: "transparent",
-            stroke: fillColor,
-            strokeWidth: 2,
-            opacity: 0.7,
-          }) as FabricObjectWithData;
-          break;
-
-        case "triangle":
-          // Create a simple equilateral triangle
-          const centerX = x + width / 2;
-          const centerY = y + height / 2;
-          const side = Math.max(width, height);
-
-          fabricShape = new fabric.Triangle({
-            left: centerX - side / 2,
-            top: centerY - side / 2,
-            width: side,
-            height: side,
-            fill: "transparent",
-            stroke: fillColor,
-            strokeWidth: 2,
-            opacity: 0.7,
-          }) as FabricObjectWithData;
-          break;
-
-        default:
-          // For other polygons, create a rect as placeholder
-          fabricShape = new fabric.Rect({
-            left: x,
-            top: y,
-            width: width,
-            height: height,
-            fill: "transparent",
-            stroke: fillColor,
-            strokeWidth: 2,
-            opacity: 0.7,
-            strokeDashArray: [5, 5],
-          }) as FabricObjectWithData;
-      }
-
-      // Add metadata
-      fabricShape.data = {
-        isEnhanced: true,
-        enhancedId: shapeId,
-        originalShape: shape.type,
-      };
-
-      // Add double-click handler for coloring
-      fabricShape.on("mousedblclick", function (this: FabricObjectWithData) {
-        this.set("fill", fillColor);
-        canvas.renderAll();
-        saveToHistory();
-      });
-
-      // Add the shape
-      canvas.add(fabricShape);
-    });
-
-    canvas.renderAll();
-    saveToHistory();
-  };
-
-  // Function to toggle auto-enhancement mode
-  const toggleAutoEnhance = () => {
-    setAutoEnhanceEnabled(!autoEnhanceEnabled);
-  };
-
-  // Add periodic sketch recognition when auto-enhance is enabled
-  useEffect(() => {
-    if (!autoEnhanceEnabled || !canvasReady) return;
-
-    const recognitionInterval = setInterval(() => {
-      recognizeAndEnhanceSketch();
-    }, 3000); // Check every 3 seconds
-
-    return () => {
-      clearInterval(recognitionInterval);
-    };
-  }, [autoEnhanceEnabled, canvasReady, isOpenCVReady]);
-
-  // Function to handle navigation back to chat
-  const handleBackToChat = useCallback(() => {
-    if (canvasModified) {
-      if (
-        confirm("You have unsaved changes. Are you sure you want to leave?")
-      ) {
-        navigate("/chat");
-      }
-    } else {
-      navigate("/chat");
-    }
-  }, [canvasModified, navigate]);
-
-  // Function to toggle music player
-  const toggleMusicPlayer = () => {
-    setShowMusicPlayer(!showMusicPlayer);
-    if (!showMusicPlayer && musicVideos.length === 0) {
-      fetchMusicVideos();
-    }
-  };
-
-  // Function to fetch music videos from YouTube
-  const fetchMusicVideos = async () => {
-    try {
-      setLoadingMusic(true);
-
-      // Use YouTube API to fetch videos
-      const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
-      if (!API_KEY) {
-        throw new Error("YouTube API key not configured");
-      }
-
-      // Construct search query based on category
-      const searchQuery = `${musicCategory} music for creativity`;
-
-      const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${searchQuery}&type=video&videoEmbeddable=true&key=${API_KEY}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`YouTube API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.items && data.items.length > 0) {
-        const videos = data.items.map((item: any) => ({
-          id: item.id.videoId,
-          title: item.snippet.title,
-          thumbnail: item.snippet.thumbnails.medium.url,
-          channelTitle: item.snippet.channelTitle,
-        }));
-
-        setMusicVideos(videos);
-      } else {
-        setMusicVideos(getFallbackMusicVideos());
-      }
-    } catch (error) {
-      console.error("Error fetching music videos:", error);
-      setMusicVideos(getFallbackMusicVideos());
-    } finally {
-      setLoadingMusic(false);
-    }
-  };
-
-  // Fallback music videos if API fails
-  const getFallbackMusicVideos = () => {
-    return [
-      {
-        id: "DWcJFNfaw9c",
-        title: "Beautiful Relaxing Music for Stress Relief",
-        thumbnail: "https://i.ytimg.com/vi/DWcJFNfaw9c/mqdefault.jpg",
-        channelTitle: "Meditation Relaxation Music",
-      },
-      {
-        id: "1ZYbU82GVz4",
-        title: "Relaxing Music for Deep Sleep",
-        thumbnail: "https://i.ytimg.com/vi/1ZYbU82GVz4/mqdefault.jpg",
-        channelTitle: "Yellow Brick Cinema",
-      },
-      {
-        id: "77ZozI0rw7w",
-        title: "Relaxing Piano Music for Stress Relief",
-        thumbnail: "https://i.ytimg.com/vi/77ZozI0rw7w/mqdefault.jpg",
-        channelTitle: "Meditation Relaxation Music",
-      },
-      {
-        id: "XjgwRzCwlzM",
-        title: "Study Music - Improve Concentration and Focus",
-        thumbnail: "https://i.ytimg.com/vi/XjgwRzCwlzM/mqdefault.jpg",
-        channelTitle: "Study Music",
-      },
-    ];
-  };
-
-  // Function to play a music video
-  const playMusicVideo = (video: any) => {
-    setCurrentMusic(video);
-    if (youtubePlayerRef.current) {
-      youtubePlayerRef.current.loadVideoById(video.id);
-      youtubePlayerRef.current.setVolume(musicVolume);
-      setMusicPlaying(true);
-    } else {
-      initializeMusicPlayer(video.id);
-    }
-  };
-
-  // Initialize YouTube player for music
-  const initializeMusicPlayer = (videoId: string) => {
-    if (!window.YT || !window.YT.Player) {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      const firstScriptTag = document.getElementsByTagName("script")[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-
-      window.onYouTubeIframeAPIReady = () => {
-        createMusicPlayer(videoId);
-      };
-    } else {
-      createMusicPlayer(videoId);
-    }
-  };
-
-  // Create the YouTube player
-  const createMusicPlayer = (videoId: string) => {
-    if (musicPlayerRef.current) {
-      youtubePlayerRef.current = new window.YT.Player(musicPlayerRef.current, {
-        height: "0",
-        width: "0",
-        videoId: videoId,
-        playerVars: {
-          autoplay: 1,
-          controls: 0,
-        },
-        events: {
-          onReady: (event: any) => {
-            setMusicPlayerReady(true);
-            event.target.setVolume(musicVolume);
-            setMusicPlaying(true);
-          },
-          onStateChange: (event: any) => {
-            setMusicPlaying(event.data === window.YT.PlayerState.PLAYING);
-          },
-          onError: (event: any) => {
-            console.error("YouTube player error:", event.data);
-          },
-        },
-      });
-    }
-  };
-
-  // Toggle play/pause
-  const togglePlayPause = () => {
-    if (!youtubePlayerRef.current) return;
-
-    if (musicPlaying) {
-      youtubePlayerRef.current.pauseVideo();
-    } else {
-      youtubePlayerRef.current.playVideo();
-    }
-    setMusicPlaying(!musicPlaying);
-  };
-
-  // Change music volume
-  const handleVolumeChange = (newVolume: number) => {
-    setMusicVolume(newVolume);
-    if (youtubePlayerRef.current) {
-      youtubePlayerRef.current.setVolume(newVolume);
-    }
-  };
-
-  // Change music category
-  const changeMusicCategory = (category: string) => {
-    setMusicCategory(category);
-    setMusicVideos([]);
-    fetchMusicVideos();
-  };
-
-  // Add the cleanup for YouTube player
-  useEffect(() => {
-    return () => {
-      if (youtubePlayerRef.current && youtubePlayerRef.current.destroy) {
-        youtubePlayerRef.current.destroy();
-      }
-    };
-  }, []);
 
   // Update functions that indicate completion of work to reset modification state
   const handleSave = () => {
@@ -1960,69 +1232,178 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
 
   return (
     <div
-      className="drawing-canvas-container"
-      style={{ position: "relative", width: "100%", height: "100vh" }}
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
     >
       <div
-        className="canvas-header"
         style={{
           display: "flex",
           justifyContent: "space-between",
+          padding: "10px 15px",
+          background: "#f0f4f8",
+          borderBottom: "1px solid #e2e8f0",
           alignItems: "center",
-          padding: "10px",
-          background: "#f0f0f0",
-          borderBottom: "1px solid #ddd",
+          flexWrap: "wrap", // Allow wrapping on small screens
         }}
       >
-        <button
-          onClick={handleBackToChat}
+        {/* Header with back button */}
+        <div
           style={{
-            padding: "8px 16px",
-            background: "#3182CE",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            marginBottom: "5px",
           }}
         >
-          ← Back to Chat
-        </button>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              color: "#4A5568",
+              fontWeight: "bold",
+              padding: "8px",
+              fontSize: "14px", // Slightly smaller for mobile
+            }}
+          >
+            <FaArrowLeft style={{ marginRight: "5px" }} /> Back
+          </button>
 
-        <div style={{ display: "flex", gap: "10px" }}>
+          <h2
+            style={{
+              fontWeight: "bold",
+              fontSize: "18px",
+              color: "#2D3748",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Lumeo Drawing Canvas
+          </h2>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: "5px",
+            alignItems: "center",
+            flexWrap: "wrap", // Allow wrapping on small screens
+            justifyContent: "flex-end",
+          }}
+        >
           {canvasModified && (
-            <span style={{ color: "#E53E3E", fontWeight: "bold" }}>
-              Unsaved Changes
+            <span
+              style={{
+                color: "#E53E3E",
+                fontWeight: "bold",
+                fontSize: "12px",
+                margin: "0 5px",
+              }}
+            >
+              Unsaved
             </span>
           )}
           <button
+            onClick={handleUndo}
+            disabled={historyIndex <= 0}
+            style={{
+              padding: "6px 10px",
+              background: historyIndex <= 0 ? "#CBD5E0" : "#4299E1",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: historyIndex <= 0 ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              fontSize: "13px", // Slightly smaller for mobile
+            }}
+          >
+            <FaUndo /> Undo
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={historyIndex >= history.length - 1}
+            style={{
+              padding: "6px 10px",
+              background:
+                historyIndex >= history.length - 1 ? "#CBD5E0" : "#4299E1",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor:
+                historyIndex >= history.length - 1 ? "not-allowed" : "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              fontSize: "13px", // Slightly smaller for mobile
+            }}
+          >
+            <FaRedo /> Redo
+          </button>
+          <button
+            onClick={handleClear}
+            style={{
+              padding: "6px 10px",
+              background: "#F56565",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              fontSize: "13px", // Slightly smaller for mobile
+            }}
+          >
+            <FaTrash /> Clear
+          </button>
+          <button
             onClick={handleSave}
             style={{
-              padding: "8px 16px",
+              padding: "6px 10px",
               background: "#38A169",
               color: "white",
               border: "none",
               borderRadius: "4px",
               cursor: "pointer",
               fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              fontSize: "13px", // Slightly smaller for mobile
             }}
           >
-            Save Drawing
+            <FaDownload /> Save
           </button>
         </div>
       </div>
-
-      <div style={{ display: "flex", height: "calc(100vh - 50px)" }}>
+      <div
+        style={{
+          display: "flex",
+          height: "calc(100vh - 70px)",
+          maxHeight: "calc(100vh - 70px)",
+        }}
+      >
         <div
           className="tools-panel"
           style={{
-            width: "200px",
+            width: "200px", // Narrower on mobile
+            maxWidth: "30%", // Limit width on small screens
             background: "#f8f8f8",
-            padding: "15px",
+            padding: "15px 10px",
             borderRight: "1px solid #ddd",
             display: "flex",
             flexDirection: "column",
-            gap: "15px",
+            gap: "20px",
+            color: "#2D3748", // Ensure text is visible
+            overflowY: "auto",
+            overflowX: "hidden",
           }}
         >
           {/* Drawing tools */}
@@ -2032,177 +1413,70 @@ const DrawingCanvas: FC<DrawingCanvasProps> = ({ onClose }) => {
                 marginBottom: "10px",
                 fontSize: "16px",
                 fontWeight: "bold",
+                color: "#2D3748", // Ensure text is visible
               }}
             >
               Drawing Tools
             </h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+              }}
+            >
               {tools.map((toolItem) => (
                 <button
                   key={toolItem.id}
                   onClick={() => setTool(toolItem.id as any)}
                   style={{
-                    padding: "8px 12px",
+                    padding: "8px 5px",
                     background: toolItem.id === tool ? "#3182CE" : "#e2e8f0",
-                    color: toolItem.id === tool ? "white" : "black",
+                    color: toolItem.id === tool ? "white" : "#2D3748",
                     border: "none",
                     borderRadius: "4px",
                     cursor: "pointer",
+                    fontWeight: 500,
+                    fontSize: "13px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "5px",
+                    boxShadow:
+                      toolItem.id === tool
+                        ? "0 2px 5px rgba(0,0,0,0.2)"
+                        : "none",
+                    transform:
+                      toolItem.id === tool ? "translateY(1px)" : "none",
+                    transition: "all 0.2s ease",
                   }}
                 >
-                  {toolItem.name}
+                  <div style={{ fontSize: "16px" }}>{toolItem.icon}</div>
+                  <span style={{ fontSize: "12px" }}>{toolItem.name}</span>
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Color selection */}
-          <div>
-            <h3
-              style={{
-                marginBottom: "10px",
-                fontSize: "16px",
-                fontWeight: "bold",
-              }}
-            >
-              Colors
-            </h3>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(5, 1fr)",
-                gap: "8px",
-              }}
-            >
-              {colors.map((colorItem) => (
-                <div
-                  key={colorItem}
-                  onClick={() => setColor(colorItem)}
-                  style={{
-                    width: "25px",
-                    height: "25px",
-                    backgroundColor: colorItem,
-                    border:
-                      colorItem === color
-                        ? "2px solid black"
-                        : "1px solid #ddd",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Brush size */}
-          <div>
-            <h3
-              style={{
-                marginBottom: "10px",
-                fontSize: "16px",
-                fontWeight: "bold",
-              }}
-            >
-              Brush Size
-            </h3>
-            <input
-              type="range"
-              min="1"
-              max="50"
-              value={strokeWidth}
-              onChange={(e) => setStrokeWidth(parseInt(e.target.value))}
-              style={{ width: "100%" }}
-            />
-            <div style={{ textAlign: "center", marginTop: "5px" }}>
-              {strokeWidth}
-            </div>
-          </div>
-
-          {(tool === "rect" || tool === "circle") && (
-            <div>
-              <h3
-                style={{
-                  marginBottom: "10px",
-                  fontSize: "16px",
-                  fontWeight: "bold",
-                }}
-              >
-                Fill Color
-              </h3>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(5, 1fr)",
-                  gap: "8px",
-                }}
-              >
-                {colors.map((colorItem) => (
-                  <div
-                    key={colorItem}
-                    onClick={() => setFillColor(colorItem)}
-                    style={{
-                      width: "25px",
-                      height: "25px",
-                      backgroundColor: colorItem,
-                      border:
-                        colorItem === fillColor
-                          ? "2px solid black"
-                          : "1px solid #ddd",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span
-              style={{
-                fontSize: "14px",
-                fontWeight: "bold",
-                marginRight: "8px",
-              }}
-            >
-              Show Grid
-            </span>
-            <button
-              onClick={toggleGrid}
-              style={{
-                width: "40px",
-                height: "20px",
-                position: "relative",
-                background: showGrid ? "#3182CE" : "#CBD5E0",
-                borderRadius: "10px",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
-                transition: "background-color 0.2s",
-              }}
-            >
-              <div
-                style={{
-                  position: "absolute",
-                  width: "16px",
-                  height: "16px",
-                  background: "white",
-                  borderRadius: "50%",
-                  top: "2px",
-                  left: showGrid ? "22px" : "2px",
-                  transition: "left 0.2s",
-                }}
-              />
-            </button>
-          </div>
         </div>
-
-        <div style={{ position: "relative", flex: 1, overflow: "hidden" }}>
+        <div
+          style={{
+            position: "relative",
+            flex: 1,
+            overflow: "hidden",
+            touchAction: "none", // Prevent touch scrolling when drawing
+          }}
+          ref={containerRef}
+        >
           <canvas
             ref={canvasRef}
             style={{
-              background: "white",
+              background: themeColors[theme].canvas, // Use the theme colors
               touchAction: "none",
+              width: "100%",
+              height: "100%",
+              minHeight: "300px", // Smaller minimum height for mobile
+              borderRadius: "0",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
             }}
           />
         </div>

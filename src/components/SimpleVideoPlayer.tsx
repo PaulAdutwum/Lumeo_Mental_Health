@@ -10,6 +10,8 @@ import {
   FaExclamationTriangle,
   FaRandom,
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { useEnvironment } from "../hooks/useEnvironment";
 
 interface VideoCategory {
   id: string;
@@ -26,7 +28,7 @@ interface Video {
 }
 
 interface SimpleVideoPlayerProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 // A simpler video player focused on wellbeing videos without emotion-based recommendations
@@ -38,6 +40,8 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({ onClose }) => {
   const [error, setError] = useState<string | null>(null);
   const playerRef = useRef<HTMLDivElement>(null);
   const [player, setPlayer] = useState<any>(null);
+  const navigate = useNavigate();
+  const { youtubeApiKey, envLoaded, hasErrors } = useEnvironment();
 
   // Define video categories
   const categories: VideoCategory[] = [
@@ -73,30 +77,57 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({ onClose }) => {
     },
   ];
 
-  // Fetch videos when category changes
+  // Fetch videos for the active category
   useEffect(() => {
     const fetchVideos = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+      setLoading(true);
+      setVideos([]);
+      setError(null);
 
-        // YouTube API key
-        const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
-        if (!API_KEY) {
-          throw new Error("YouTube API key not configured");
+      try {
+        if (!youtubeApiKey) {
+          console.warn("YouTube API key not available, using fallback videos");
+          setVideos(getFallbackVideos());
+          return;
         }
 
-        console.log("Fetching videos for category:", activeCategory);
+        // Construct search query based on category
+        let searchQuery = "";
+        switch (activeCategory) {
+          case "mindfulness":
+            searchQuery = "guided meditation mindfulness practice";
+            break;
+          case "motivation":
+            searchQuery = "motivational wellness inspiration mental health";
+            break;
+          case "relaxation":
+            searchQuery = "relaxation techniques stress relief";
+            break;
+          case "nature":
+            searchQuery = "calming nature scenes sounds for meditation";
+            break;
+          case "sleep":
+            searchQuery = "deep sleep music relaxation insomnia help";
+            break;
+          case "positivity":
+            searchQuery = "positive thinking affirmations mental wellness";
+            break;
+          default:
+            searchQuery = "mindfulness meditation wellness";
+        }
 
-        // Get videos for the selected category
+        console.log("Fetching videos for query:", searchQuery);
+
         const response = await fetch(
-          `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=9&q=${activeCategory}+mental+health+wellbeing&type=video&videoEmbeddable=true&key=${API_KEY}`
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=6&q=${encodeURIComponent(
+            searchQuery
+          )}&type=video&videoEmbeddable=true&key=${youtubeApiKey}`
         );
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`YouTube API error (${response.status}):`, errorText);
-          throw new Error(`YouTube API request failed: ${response.status}`);
+          console.error("YouTube API error response:", errorText);
+          throw new Error(`YouTube API error: ${response.status}`);
         }
 
         const data = await response.json();
@@ -130,8 +161,10 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({ onClose }) => {
       }
     };
 
-    fetchVideos();
-  }, [activeCategory]);
+    if (envLoaded) {
+      fetchVideos();
+    }
+  }, [activeCategory, youtubeApiKey, envLoaded]);
 
   // Load YouTube API script when a video is selected
   useEffect(() => {
@@ -341,6 +374,17 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({ onClose }) => {
     setSelectedVideo(video);
   };
 
+  // Handle closing based on context (modal or standalone page)
+  const handleClose = () => {
+    if (onClose) {
+      // Used as modal
+      onClose();
+    } else {
+      // Used as standalone page
+      navigate("/main");
+    }
+  };
+
   // Close the video player and return to the list
   const handleClosePlayer = () => {
     setSelectedVideo(null);
@@ -373,7 +417,7 @@ const SimpleVideoPlayer: React.FC<SimpleVideoPlayerProps> = ({ onClose }) => {
             Wellness Videos
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 rounded-full hover:bg-gray-700 transition-colors"
           >
             <FaTimes className="text-gray-400" />

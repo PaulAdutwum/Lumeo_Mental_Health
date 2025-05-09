@@ -16,6 +16,12 @@ import {
   FaChartBar,
   FaMoon,
   FaPlay,
+  FaVolumeUp,
+  FaVolumeMute,
+  FaSpinner,
+  FaYoutube,
+  FaExclamationTriangle,
+  FaTimes,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -27,6 +33,8 @@ import { saveMoodEntry } from "../services/moodTracking";
 import TherapeuticImageGenerator from "./TherapeuticImageGenerator";
 import VideoRecommendations from "./VideoRecommendations";
 import DrawingCanvas from "./DrawingCanvas";
+import MusicPage from "./MusicPage";
+import SimpleVideoPlayer from "./SimpleVideoPlayer";
 
 // Message type definition
 interface Message {
@@ -91,6 +99,8 @@ const Chat: React.FC = () => {
   );
   const [showVideoRecommendations, setShowVideoRecommendations] =
     useState(false);
+  const [showMusicPlayer, setShowMusicPlayer] = useState(false);
+  const [showCanvas, setShowCanvas] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -160,27 +170,13 @@ const Chat: React.FC = () => {
       },
     },
     {
-      id: "therapeutic-videos",
-      name: "Therapeutic Videos",
-      icon: <FaPlay className="text-indigo-500" />,
-      description: "Personalized therapeutic videos based on your mood",
-      action: () => {
-        setActiveTool("therapeutic-videos");
-        // Get current emotion or use neutral
-        const emotion = lastEmotion?.primaryEmotion || "neutral";
-        suggestVideos(emotion);
-      },
-    },
-    {
       id: "music",
       name: "Music",
       icon: <FaMusic className="text-purple-500" />,
-      description: "Generate music with AI",
+      description: "Listen to relaxing music for mindfulness",
       action: () => {
         setActiveTool("music");
-        alert(
-          "Music generation coming soon! You'll be able to create custom background music based on mood and style."
-        );
+        setShowMusicPlayer(true);
       },
     },
     {
@@ -215,9 +211,6 @@ const Chat: React.FC = () => {
       },
     },
   ];
-
-  // Add state for canvas feature
-  const [showCanvas, setShowCanvas] = useState(false);
 
   // Function to show the drawing canvas
   const showDrawingCanvas = () => {
@@ -320,21 +313,151 @@ const Chat: React.FC = () => {
     }
   };
 
-  // Add a function to suggest videos based on emotion
-  const suggestVideos = (emotion: string) => {
-    // Store current emotion in localStorage for the VideoRecommendations component
-    localStorage.setItem("currentEmotion", emotion);
+  // Add these new states for voice functionality
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceFeedback, setVoiceFeedback] = useState(false);
+  const recognition = useRef<any>(null);
 
-    // Show video recommendations modal
-    setShowVideoRecommendations(true);
+  // Add this function for voice recognition
+  const startListening = () => {
+    if (!("webkitSpeechRecognition" in window)) {
+      alert(
+        "Speech recognition is not supported in this browser. Try Chrome or Edge."
+      );
+      return;
+    }
 
-    // Log this action for analysis
-    console.log(`Suggesting therapeutic videos for emotion: ${emotion}`);
+    if (recognition.current) {
+      recognition.current.stop();
+    }
+
+    recognition.current = new (window as any).webkitSpeechRecognition();
+    recognition.current.continuous = true;
+    recognition.current.interimResults = true;
+    recognition.current.lang = "en-US";
+
+    recognition.current.onstart = () => {
+      setIsListening(true);
+      setTranscript("");
+    };
+
+    recognition.current.onresult = (event: any) => {
+      let interimTranscript = "";
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      const currentTranscript = finalTranscript || interimTranscript;
+      setTranscript(currentTranscript);
+      setInputText(currentTranscript);
+    };
+
+    recognition.current.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      setIsListening(false);
+    };
+
+    recognition.current.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.current.start();
   };
 
-  // Real AI message sending with emotion analysis
+  const stopListening = () => {
+    if (recognition.current) {
+      recognition.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  // Add a function to read AI responses aloud
+  const speakText = (text: string) => {
+    if (!("speechSynthesis" in window)) {
+      console.error("Text-to-speech is not supported in this browser");
+      return;
+    }
+
+    // Stop any current speech
+    if (isSpeaking) {
+      window.speechSynthesis.cancel();
+    }
+
+    // Create a new speech synthesis utterance
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Configure the utterance
+    utterance.lang = "en-US";
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    // Get available voices and select a female voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const femaleVoice = voices.find(
+      (voice) =>
+        voice.name.includes("Female") ||
+        voice.name.includes("Google") ||
+        voice.name.includes("Samantha")
+    );
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
+    }
+
+    // Set listeners
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+    };
+
+    utterance.onerror = (event) => {
+      console.error("Speech synthesis error", event);
+      setIsSpeaking(false);
+    };
+
+    // Speak the text
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Toggle voice feedback
+  const toggleVoiceFeedback = () => {
+    setVoiceFeedback(!voiceFeedback);
+
+    // Announce the change
+    if (!voiceFeedback) {
+      speakText("Voice feedback is now enabled");
+    }
+  };
+
+  // Update the handleVoiceInput function
+  const handleVoiceInput = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
+  // Modify the sendMessage function to clear transcript after sending
   const sendMessage = async () => {
     if (inputText.trim() === "") return;
+
+    // Stop listening if active
+    if (isListening) {
+      stopListening();
+    }
 
     // Add user message
     const userMessage: Message = {
@@ -347,6 +470,7 @@ const Chat: React.FC = () => {
 
     setMessages((prev) => [...prev, userMessage]);
     setInputText("");
+    setTranscript("");
     setIsTyping(true);
 
     // Convert to API message format
@@ -400,6 +524,11 @@ const Chat: React.FC = () => {
         { role: "assistant", content: aiResponse },
       ]);
 
+      // If voice feedback is enabled, read the AI response aloud
+      if (voiceFeedback) {
+        speakText(aiResponse);
+      }
+
       // Handle special cases based on emotion
       if (
         emotionAnalysis.primaryEmotion === "anxiety" &&
@@ -420,6 +549,13 @@ const Chat: React.FC = () => {
             ...prev,
             { role: "assistant", content: promptMessage.text },
           ]);
+
+          // Read this prompt too if voice feedback is enabled
+          if (voiceFeedback) {
+            setTimeout(() => {
+              speakText(promptMessage.text);
+            }, 500);
+          }
 
           // After a short delay, offer the breathing exercise
           setTimeout(() => {
@@ -445,7 +581,7 @@ const Chat: React.FC = () => {
         setTimeout(() => {
           const videoPromptMessage: Message = {
             id: Date.now().toString() + 3,
-            text: `I think watching a short therapeutic video might help with your ${emotionAnalysis.primaryEmotion}. Would you like to see some recommendations?`,
+            text: `I think watching a short wellness video might help with your ${emotionAnalysis.primaryEmotion}. Would you like to see some recommendations?`,
             sender: "ai",
             timestamp: new Date(),
             type: "text",
@@ -455,7 +591,7 @@ const Chat: React.FC = () => {
 
           // After a short delay, open the video recommendations
           setTimeout(() => {
-            suggestVideos(emotionAnalysis.primaryEmotion);
+            setShowVideoRecommendations(true);
           }, 3000);
         }, 2000);
       }
@@ -481,19 +617,6 @@ const Chat: React.FC = () => {
     setIsTyping(false);
   };
 
-  // Handle voice input
-  const handleVoiceInput = () => {
-    setIsRecording(!isRecording);
-    // In a real app, this would use the Web Speech API or another speech recognition service
-    if (!isRecording) {
-      // Start recording
-      setTimeout(() => {
-        setInputText("This is a sample voice transcription.");
-        setIsRecording(false);
-      }, 2000);
-    }
-  };
-
   // Handle logout
   const handleLogout = () => {
     auth.signOut().then(() => {
@@ -507,7 +630,7 @@ const Chat: React.FC = () => {
       <div className="w-16 md:w-64 bg-gray-800 p-4 flex flex-col">
         <div className="flex items-center justify-center md:justify-start mb-8">
           <FaRobot className="text-blue-400 text-xl md:mr-2" />
-          <span className="hidden md:block font-bold text-xl">Lumio AI</span>
+          <span className="hidden md:block font-bold text-xl">Lumeo AI</span>
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -530,7 +653,7 @@ const Chat: React.FC = () => {
 
         <div className="mt-4">
           <button
-            onClick={() => navigate("/main")}
+            onClick={() => navigate("/")}
             className="flex items-center w-full p-2 rounded-lg hover:bg-gray-700 transition-colors"
           >
             <FaHome className="text-gray-400 text-xl" />
@@ -564,13 +687,34 @@ const Chat: React.FC = () => {
               </div>
             )}
           </div>
-          <button
-            className="flex items-center p-2 rounded-full hover:bg-gray-700"
-            onClick={() => setShowMoodTracker(true)}
-          >
-            <FaChartLine className="mr-2" />
-            <span className="text-sm hidden md:inline">Track Mood</span>
-          </button>
+          <div className="flex gap-2 items-center">
+            <button
+              className={`p-2 rounded-full ${
+                voiceFeedback ? "bg-blue-600" : "hover:bg-gray-700"
+              }`}
+              onClick={toggleVoiceFeedback}
+              title={
+                voiceFeedback
+                  ? "Disable voice feedback"
+                  : "Enable voice feedback"
+              }
+            >
+              {voiceFeedback ? <FaVolumeUp /> : <FaVolumeMute />}
+            </button>
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
+              onClick={() => navigate("/movies")}
+            >
+              Explore Movies & Videos
+            </button>
+            <button
+              className="flex items-center p-2 rounded-full hover:bg-gray-700"
+              onClick={() => setShowMoodTracker(true)}
+            >
+              <FaChartLine className="mr-2" />
+              <span className="text-sm hidden md:inline">Track Mood</span>
+            </button>
+          </div>
         </header>
 
         {/* Messages area */}
@@ -683,6 +827,16 @@ const Chat: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
+        {/* Voice transcript display */}
+        {isListening && transcript && (
+          <div className="bg-gray-800 p-3 border-t border-gray-700">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse mr-2"></div>
+              <p className="text-gray-300 italic">{transcript}</p>
+            </div>
+          </div>
+        )}
+
         {/* Input area */}
         <div className="p-4 border-t border-gray-700 bg-gray-800">
           <div className="flex items-center">
@@ -728,11 +882,15 @@ const Chat: React.FC = () => {
 
             <button
               className={`p-2 rounded-full ml-2 ${
-                isRecording ? "bg-red-500" : "hover:bg-gray-700"
+                isListening ? "bg-red-500" : "hover:bg-gray-700"
               }`}
               onClick={handleVoiceInput}
             >
-              <FaMicrophone />
+              {isListening ? (
+                <FaSpinner className="animate-spin" />
+              ) : (
+                <FaMicrophone />
+              )}
             </button>
 
             <button
@@ -778,13 +936,23 @@ const Chat: React.FC = () => {
         )}
 
         {showVideoRecommendations && (
-          <VideoRecommendations
+          <SimpleVideoPlayer
             onClose={() => setShowVideoRecommendations(false)}
-            currentEmotion={lastEmotion?.primaryEmotion || "neutral"}
           />
         )}
 
-        {showCanvas && <DrawingCanvas onClose={() => setShowCanvas(false)} />}
+        {showCanvas && (
+          <DrawingCanvas
+            onClose={() => {
+              setShowCanvas(false);
+              navigate("/main");
+            }}
+          />
+        )}
+
+        {showMusicPlayer && (
+          <MusicPage onClose={() => setShowMusicPlayer(false)} />
+        )}
       </AnimatePresence>
     </div>
   );

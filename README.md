@@ -1,6 +1,43 @@
-# Lumeo - Therapeutic AI Companion
+# Lumeo - Mental Wellness Companion
 
-Lumeo is an AI-powered therapeutic companion application that helps users manage their emotional well-being through chat interactions, therapeutic imagery, video recommendations, breathing exercises, and mood tracking.
+Lumeo is a mental wellness companion application designed to support users through AI conversation, creative tools, and curated content.
+
+## Setup
+
+### Environment Variables
+
+Create a `.env` file in the project root with the following variables:
+
+```
+VITE_YOUTUBE_API_KEY=your_actual_youtube_api_key
+```
+
+### YouTube API Key
+
+To use the video and music features:
+
+1. Create a Google Cloud project at https://console.cloud.google.com/
+2. Enable the YouTube Data API v3
+3. Create an API key with appropriate restrictions
+4. Add the key to your `.env` file
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+## Features
+
+- AI Conversation: Chat with Lumeo about your thoughts and feelings
+- Drawing Canvas: Express yourself creatively
+- Wellness Videos: Curated content for mindfulness, meditation, and more
+- Relaxing Music: Find music to help you unwind and focus
+- Breathing Exercises: Guided exercises to help manage anxiety and stress
 
 ## Migration from Firebase to PostgreSQL/AWS
 
@@ -37,7 +74,6 @@ cp .env.example .env
 
 - **API Keys**:
   - `OPENAI_API_KEY`: OpenAI API key for AI features
-  - `YOUTUBE_API_KEY`: YouTube API key for video recommendations
   - `REPLICATE_API_TOKEN`: Optional for alternative image generation
 
 ## Database Setup

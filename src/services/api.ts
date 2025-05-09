@@ -75,7 +75,7 @@ export const getVideoRecommendations = async (
   try {
     // Use reliable working videos in development mode
     if (window.location.hostname === 'localhost') {
-      console.log('Development mode: Using reliable video recommendations');
+     
       return [
         {
           id: "86m4RC_ADEY",

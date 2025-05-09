@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { FcGoogle } from "react-icons/fc";
 import {
   FaFilm,
   FaMicrophone,
@@ -9,9 +8,14 @@ import {
   FaImage,
   FaVideo,
   FaComment,
+  FaHeart,
+  FaSmile,
+  FaLeaf,
+  FaBrain,
+  FaChevronRight,
+  FaChevronLeft,
 } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import TrendingMovies from "../components/TrendingMovies";
 import { auth, provider } from "../components/firebase";
 import {
   signInWithPopup,
@@ -29,10 +33,20 @@ import {
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BACKDROP_URL = "https://image.tmdb.org/t/p/original";
 
+// Mental wellness background images
+const wellnessBackgrounds = [
+  "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1498673394965-85cb14905c89?auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1518241353330-0f7941c2d9b5?auto=format&fit=crop&q=80",
+  "https://images.unsplash.com/photo-1508672019048-805c876b67e2?auto=format&fit=crop&q=80",
+];
+
 const Login = () => {
   const [user, setUser] = useState<User | null>(null);
   const [welcomePopup, setWelcomePopup] = useState(false);
   const [background, setBackground] = useState<string | null>(null);
+  const [currentGuideStep, setCurrentGuideStep] = useState(0);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -68,55 +82,56 @@ const Login = () => {
     }
   };
 
-  // Fetch Movie Background (Runs Once on Page Load)
+  // Rotate through wellness background images
   useEffect(() => {
-    const fetchBackground = async () => {
-      try {
-        const res = await fetch(
-          `https://api.themoviedb.org/3/trending/movie/week?api_key=${API_KEY}`
-        );
-        const data = await res.json();
+    let currentIndex = 0;
+    setBackground(wellnessBackgrounds[currentIndex]);
 
-        if (data.results && data.results.length > 0) {
-          let randomMovie;
-          do {
-            randomMovie =
-              data.results[Math.floor(Math.random() * data.results.length)];
-          } while (!randomMovie.backdrop_path);
+    const rotateBackgrounds = setInterval(() => {
+      currentIndex = (currentIndex + 1) % wellnessBackgrounds.length;
+      setBackground(wellnessBackgrounds[currentIndex]);
+    }, 10000); // Change every 10 seconds
 
-          setBackground(BACKDROP_URL + randomMovie.backdrop_path);
-        } else {
-          setBackground("/default-background.jpg");
-        }
-      } catch (error) {
-        console.error("Error fetching background:", error);
-        setBackground("/default-background.jpg");
-      }
-    };
-
-    fetchBackground();
+    return () => clearInterval(rotateBackgrounds);
   }, []);
 
-  // Handle Authentication State
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+  // How to use guide steps
+  const guideSteps = [
+    {
+      title: "Express How You Feel",
+      description:
+        "Start with a chat about your day or current feelings. Lumeo listens and provides supportive responses.",
+      icon: <FaComment className="text-blue-400 text-3xl mb-3" />,
+    },
+    {
+      title: "Get Personalized Recommendations",
+      description:
+        "Receive tailored therapeutic content like videos, music, and activities based on your emotional state.",
+      icon: <FaHeart className="text-red-500 text-3xl mb-3" />,
+    },
+    {
+      title: "Creative Expression Tools",
+      description:
+        "Use our drawing canvas to express emotions visually when words aren't enough.",
+      icon: <FaPencilAlt className="text-purple-500 text-3xl mb-3" />,
+    },
+    {
+      title: "Mindfulness Exercises",
+      description:
+        "Access guided breathing exercises and meditation tools to help manage stress and anxiety.",
+      icon: <FaLeaf className="text-green-500 text-3xl mb-3" />,
+    },
+  ];
 
-      if (currentUser && window.location.pathname === "/") {
-        if (!welcomePopup) {
-          setWelcomePopup(true);
-          setTimeout(() => {
-            setWelcomePopup(false);
-            if (window.location.pathname === "/main") {
-              navigate("/main");
-            }
-          }, 5000);
-        }
-      }
-    });
+  const nextGuideStep = () => {
+    setCurrentGuideStep((prev) => (prev + 1) % guideSteps.length);
+  };
 
-    return () => unsubscribe();
-  }, [navigate, welcomePopup]);
+  const prevGuideStep = () => {
+    setCurrentGuideStep(
+      (prev) => (prev - 1 + guideSteps.length) % guideSteps.length
+    );
+  };
 
   return (
     <div
@@ -126,7 +141,7 @@ const Login = () => {
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
-        transition: "background 1s ease-in-out",
+        transition: "background 1.5s ease-in-out",
       }}
     >
       {welcomePopup && (
@@ -135,161 +150,161 @@ const Login = () => {
           animate={{ opacity: [0, 1, 1, 0] }}
           transition={{ duration: 3 }}
         >
-          🎉 Hi {user?.displayName || "User"}, Welcome to Lumio AI!
+          🎉 Hi {user?.displayName || "User"}, Welcome to Lumeo AI!
         </motion.div>
       )}
 
       {/* Dark Overlay for Better Readability */}
       <div className="absolute inset-0 bg-black bg-opacity-70"></div>
 
-      {/* Lumio Logo (Positioned at the Top Left) */}
+      {/* Lumeo Logo (Positioned at the Top Left) */}
       <div className="absolute top-5 left-5 flex items-center text-white text-2xl z-10">
         <FaRobot className="text-blue-400 mr-2 hover:text-blue-300 transition" />
-        <span className="font-bold">Lumio AI</span>
+        <span className="font-bold">Lumeo AI</span>
       </div>
 
       {/* Main Content Container */}
-      <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 px-4">
-        {/* Left Content - App Description */}
-        <div className="w-full md:w-1/2 text-white">
+      <div className="relative z-10 w-full max-w-6xl mx-auto flex flex-col items-center justify-center gap-12 px-4">
+        {/* Header Content */}
+        <div className="w-full text-white text-center">
           <motion.h1
-            className="text-4xl md:text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500"
+            className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            Lumio: Your AI Companion
+            Welcome to Lumeo
           </motion.h1>
 
           <motion.p
-            className="text-lg mb-8 leading-relaxed"
+            className="text-xl mb-8 leading-relaxed max-w-3xl mx-auto"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            Meet your personal AI assistant, creative partner, and emotional
-            support system—all in one platform.
+            Your personal AI companion for mental wellbeing, emotional support,
+            and creative expression — here for you, anytime you need it.
           </motion.p>
-
-          {/* Feature Grid */}
-          <motion.div
-            className="grid grid-cols-2 gap-4 mb-8"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-          >
-            <div className="flex items-center space-x-2">
-              <FaComment className="text-blue-400" />
-              <span>AI Chat Support</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <FaImage className="text-green-400" />
-              <span>Image Generation</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <FaVideo className="text-red-400" />
-              <span>Video Creation</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <FaMicrophone className="text-yellow-400" />
-              <span>Voice Interaction</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <FaPencilAlt className="text-purple-400" />
-              <span>Creative Canvas</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <FaFilm className="text-pink-400" />
-              <span>Media Recommendations</span>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="p-4 bg-gray-800 bg-opacity-50 rounded-lg border border-gray-700"
-          >
-            <h3 className="text-xl font-semibold mb-2">Why Lumeo AI?</h3>
-            <p className="mb-2">✓ 24/7 anonymous emotional support</p>
-            <p className="mb-2">
-              ✓ Personalized recommendations based on your preferences
-            </p>
-            <p className="mb-2">
-              ✓ Express yourself with AI-guided creative tools
-            </p>
-            <p>✓ Multimodal interaction with text, voice, and vision</p>
-          </motion.div>
         </div>
 
-        {/* Right Content - Login Form */}
-        <motion.div
-          className="w-full md:w-5/12 bg-white bg-opacity-10 backdrop-blur-md p-8 rounded-xl shadow-2xl border border-gray-700"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">
-            Login to Lumeo AI
-          </h2>
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                placeholder="you@example.com"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                placeholder="••••••••"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-white"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 px-4 rounded-lg hover:opacity-90 transition duration-300 font-medium"
-            >
-              Sign In
-            </button>
-          </form>
-
-          <div className="mt-4 flex items-center justify-between">
-            <hr className="w-full border-gray-600" />
-            <span className="px-3 text-gray-400 text-sm">OR</span>
-            <hr className="w-full border-gray-600" />
-          </div>
-
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full mt-4 bg-white text-gray-800 py-3 px-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-gray-100 transition duration-300 font-medium"
+        {/* Features and Button Section */}
+        <div className="flex flex-col md:flex-row items-center justify-between w-full gap-10">
+          {/* Left Content - Features */}
+          <motion.div
+            className="w-full md:w-1/2 text-white"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
           >
-            <FcGoogle size={20} />
-            <span>Continue with Google</span>
-          </button>
+            <h2 className="text-2xl font-semibold mb-6 text-blue-300">
+              What Lumeo Offers
+            </h2>
 
-          <p className="mt-6 text-center text-gray-400 text-sm">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="text-blue-400 hover:underline font-medium"
+            {/* Feature Grid */}
+            <div className="grid grid-cols-2 gap-5 mb-8">
+              <div className="flex flex-col bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-gray-700">
+                <FaComment className="text-blue-400 mb-3" />
+                <span className="font-medium">Supportive Conversation</span>
+                <span className="text-sm text-gray-300 mt-1">
+                  24/7 confidential companion
+                </span>
+              </div>
+              <div className="flex flex-col bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-gray-700">
+                <FaBrain className="text-green-400 mb-3" />
+                <span className="font-medium">Cognitive Support</span>
+                <span className="text-sm text-gray-300 mt-1">
+                  CBT-inspired techniques
+                </span>
+              </div>
+              <div className="flex flex-col bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-gray-700">
+                <FaFilm className="text-red-400 mb-3" />
+                <span className="font-medium">Therapeutic Media</span>
+                <span className="text-sm text-gray-300 mt-1">
+                  Personalized recommendations
+                </span>
+              </div>
+              <div className="flex flex-col bg-gray-800 bg-opacity-50 rounded-lg p-4 border border-gray-700">
+                <FaPencilAlt className="text-purple-400 mb-3" />
+                <span className="font-medium">Creative Expression</span>
+                <span className="text-sm text-gray-300 mt-1">
+                  Art therapy tools
+                </span>
+              </div>
+            </div>
+
+            <motion.button
+              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-4 px-10 rounded-lg text-xl shadow-lg transition mb-6 w-full"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate("/chat")}
             >
-              Sign up
-            </Link>
-          </p>
-        </motion.div>
+              Start Your Wellness Journey
+            </motion.button>
+          </motion.div>
+
+          {/* Right Content - How to use guide */}
+          <motion.div
+            className="w-full md:w-1/2 bg-white bg-opacity-10 backdrop-blur-md rounded-xl shadow-2xl border border-gray-700 overflow-hidden"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+          >
+            <div className="p-6">
+              <h2 className="text-2xl font-semibold mb-4 text-white text-center">
+                How to Use Lumeo
+              </h2>
+
+              {/* Guide carousel */}
+              <div className="relative">
+                <motion.div
+                  key={currentGuideStep}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.5 }}
+                  className="bg-gray-800 bg-opacity-50 p-6 rounded-lg min-h-[220px] flex flex-col items-center text-center"
+                >
+                  {guideSteps[currentGuideStep].icon}
+                  <h3 className="text-xl font-medium text-white mb-3">
+                    {guideSteps[currentGuideStep].title}
+                  </h3>
+                  <p className="text-gray-200">
+                    {guideSteps[currentGuideStep].description}
+                  </p>
+                </motion.div>
+
+                {/* Navigation dots */}
+                <div className="flex justify-center mt-4 space-x-2">
+                  {guideSteps.map((_, index) => (
+                    <button
+                      key={index}
+                      className={`w-3 h-3 rounded-full ${
+                        index === currentGuideStep
+                          ? "bg-blue-500"
+                          : "bg-gray-500"
+                      }`}
+                      onClick={() => setCurrentGuideStep(index)}
+                    />
+                  ))}
+                </div>
+
+                {/* Navigation arrows */}
+                <button
+                  className="absolute top-1/2 left-0 -translate-y-1/2 -ml-3 bg-gray-800 bg-opacity-70 rounded-full p-2 text-white"
+                  onClick={prevGuideStep}
+                >
+                  <FaChevronLeft />
+                </button>
+                <button
+                  className="absolute top-1/2 right-0 -translate-y-1/2 -mr-3 bg-gray-800 bg-opacity-70 rounded-full p-2 text-white"
+                  onClick={nextGuideStep}
+                >
+                  <FaChevronRight />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
       </div>
 
       {/* Footer */}

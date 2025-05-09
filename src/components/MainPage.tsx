@@ -182,6 +182,33 @@ const MainPage: React.FC = () => {
     });
   };
 
+  if (!API_KEY) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        <div className="bg-red-800 p-8 rounded-lg shadow-lg text-center">
+          <h2 className="text-2xl font-bold mb-4">Missing TMDb API Key</h2>
+          <p className="mb-2">
+            Please add your TMDb API key to your <code>.env.local</code> file as{" "}
+            <code>VITE_TMDB_API_KEY</code>.
+          </p>
+          <p className="mb-2">Then restart your development server.</p>
+          <p className="text-sm text-gray-300 mt-4">
+            If you don't have a TMDb API key, you can get one at{" "}
+            <a
+              href="https://www.themoviedb.org/settings/api"
+              className="text-blue-400 underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              TMDb API
+            </a>
+            .
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex">
       {isPlayerOpen && trailerKey && (
@@ -237,7 +264,7 @@ const MainPage: React.FC = () => {
           </button>
 
           <div className="flex flex-col space-y-2 mt-4 flex-grow overflow-y-auto">
-            {genres.length > 0 ? (
+            {Array.isArray(genres) && genres.length > 0 ? (
               genres.map((genre) => (
                 <button
                   key={genre.id}
@@ -328,7 +355,7 @@ const MainPage: React.FC = () => {
         </div>
         {/* Display Movies */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {movies && movies.length > 0 ? (
+          {Array.isArray(movies) && movies.length > 0 ? (
             movies.map((movie) => (
               <div
                 key={movie.id}

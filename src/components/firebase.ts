@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithEmailAndPassword} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-console.log("Firebase API Key:", import.meta.env.VITE_FIREBASE_API_KEY);
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -13,15 +13,15 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-// 🔥 Initialize Firebase App
+//  Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// 🔑 Initialize Firebase Authentication
+//  Initialize Firebase Authentication
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// 📦 Initialize Firestore Database
+//  Initialize Firestore Database
 const db = getFirestore(app);
 
-// ✅ Export properly
+//  Export properly
 export { auth, provider, GoogleAuthProvider, signInWithEmailAndPassword, db };

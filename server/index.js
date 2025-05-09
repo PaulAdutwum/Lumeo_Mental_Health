@@ -56,7 +56,7 @@ io.on('connection', (socket) => {
   // Listen for user messages about the canvas
   socket.on('user-message', async (data) => {
     try {
-      console.log('Received message from user:', data.text);
+    
       
       // Process with OpenAI if API key is available
       if (process.env.OPENAI_API_KEY) {

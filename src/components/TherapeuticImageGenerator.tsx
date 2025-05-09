@@ -398,38 +398,38 @@ const TherapeuticImageGenerator: React.FC<TherapeuticImageGeneratorProps> = ({
             <div>
               <p className="font-medium">Error Generating Image</p>
               <p className="mt-1 text-sm">{error}</p>
-              {error.includes("API key") && (
+              {(!apiKeysConfigured || error.includes("API key")) && (
                 <div className="mt-2 text-sm bg-red-900/30 p-2 rounded">
                   <p className="mb-1">
                     <strong>How to fix:</strong>
                   </p>
                   <ol className="list-decimal list-inside">
                     <li>
-                      Create API keys at{" "}
-                      <a
-                        href="https://platform.openai.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-300 underline"
-                      >
-                        OpenAI
-                      </a>{" "}
-                      or{" "}
-                      <a
-                        href="https://replicate.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-300 underline"
-                      >
-                        Replicate
-                      </a>
+                      Add your OpenAI or Replicate API key to the .env file and
+                      restart the app.
                     </li>
-                    <li>Add them to your environment variables</li>
-                    <li>Restart the application</li>
+                    <li>
+                      If you don't have an API key, you can still use the app,
+                      but image generation will show a placeholder.
+                    </li>
                   </ol>
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {!imageUrl && error && !isGenerating && (
+          <div className="flex flex-col items-center justify-center mt-6">
+            <img
+              src="https://via.placeholder.com/512x512?text=Image+Generation+Failed"
+              alt="Fallback"
+              className="w-48 h-48 object-contain rounded mb-2"
+            />
+            <p className="text-red-300 text-sm">
+              Image generation failed. Please check your API keys or try again
+              later.
+            </p>
           </div>
         )}
 

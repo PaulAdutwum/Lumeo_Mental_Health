@@ -197,7 +197,7 @@ const BreathingExercise: React.FC<BreathingExerciseProps> = ({
   // Manage audio
   useEffect(() => {
     // This would play the ambient sound if the files were available
-    // In a real app, you'd include these audio files in the public directory
+
     if (!isMuted && audioRef.current) {
       audioRef.current.volume = 0.3;
       audioRef.current
