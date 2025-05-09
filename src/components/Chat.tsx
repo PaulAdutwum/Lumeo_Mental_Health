@@ -22,6 +22,7 @@ import {
   FaYoutube,
   FaExclamationTriangle,
   FaTimes,
+  FaBars,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -100,6 +101,7 @@ const Chat: React.FC = () => {
   const [showVideoRecommendations, setShowVideoRecommendations] =
     useState(false);
   const [showMusicPlayer, setShowMusicPlayer] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -612,8 +614,119 @@ const Chat: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-gray-900 text-white overflow-hidden">
-      {/* Sidebar */}
-      <div className="w-16 md:w-64 bg-gray-800 p-4 flex flex-col">
+      {/* Hamburger menu for mobile */}
+      <button
+        className="md:hidden fixed top-4 left-4 z-50 bg-gray-800 p-2 rounded-md"
+        onClick={() => setShowMobileMenu(true)}
+        aria-label="Open menu"
+      >
+        <FaBars className="text-white text-2xl" />
+      </button>
+      {/* Mobile menu overlay */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col items-center justify-center">
+          <button
+            className="absolute top-6 right-6 text-white text-3xl"
+            onClick={() => setShowMobileMenu(false)}
+            aria-label="Close menu"
+          >
+            <FaTimes />
+          </button>
+          <div className="flex flex-col gap-6 text-2xl text-white">
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                setActiveTool("text");
+              }}
+            >
+              Chat
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                setActiveTool("videos");
+                setShowVideoRecommendations(true);
+              }}
+            >
+              Wellness Videos
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                setActiveTool("music");
+                setShowMusicPlayer(true);
+              }}
+            >
+              Music
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                setActiveTool("image");
+                setShowImageGenerator(true);
+              }}
+            >
+              Image Creation
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                setActiveTool("canvas"); /* Canvas logic if needed */
+              }}
+            >
+              Creative Canvas
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                setActiveTool("story"); /* Story logic if needed */
+              }}
+            >
+              Story Creator
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                setActiveTool("mood");
+                setShowMoodTracker(true);
+              }}
+            >
+              Mood Tracker
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                setActiveTool("breathing");
+                setShowBreathingExercise(true);
+              }}
+            >
+              Breathing Exercise
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                navigate("/");
+              }}
+            >
+              Home
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                handleLogout();
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Sidebar - hidden on mobile when menu is open */}
+      <div
+        className={`w-16 md:w-64 bg-gray-800 p-4 flex flex-col ${
+          showMobileMenu ? "hidden" : ""
+        } md:flex`}
+      >
         <div className="flex items-center justify-center md:justify-start mb-8">
           <FaRobot className="text-blue-400 text-xl md:mr-2" />
           <span className="hidden md:block font-bold text-xl">Lumeo AI</span>

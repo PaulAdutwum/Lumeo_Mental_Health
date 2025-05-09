@@ -182,6 +182,8 @@ const MainPage: React.FC = () => {
     });
   };
 
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+
   if (!API_KEY) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
@@ -512,6 +514,75 @@ const MainPage: React.FC = () => {
           </div>
         </footer>
       </div>
+
+      {/* Hamburger menu for mobile */}
+      <button
+        className="fixed top-4 right-4 z-50 sm:hidden bg-gray-800 p-2 rounded-md"
+        onClick={() => setShowMobileMenu(true)}
+      >
+        <FaBars className="text-white text-2xl" />
+      </button>
+
+      {showMobileMenu && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
+          <button
+            className="absolute top-6 right-6 text-white text-3xl"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            &times;
+          </button>
+          <div className="flex flex-col gap-6 text-2xl text-white">
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                navigate("/chat");
+              }}
+            >
+              Chat
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                navigate("/chat?tool=videos");
+              }}
+            >
+              Wellness Videos
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                navigate("/chat?tool=music");
+              }}
+            >
+              Music
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                navigate("/chat?tool=image");
+              }}
+            >
+              Image Creation
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                navigate("/chat?tool=canvas");
+              }}
+            >
+              Creative Canvas
+            </button>
+            <button
+              onClick={() => {
+                setShowMobileMenu(false);
+                navigate("/chat?tool=story");
+              }}
+            >
+              Story Creator
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

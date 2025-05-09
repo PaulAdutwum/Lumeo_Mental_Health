@@ -14,6 +14,7 @@ import {
   FaBrain,
   FaChevronRight,
   FaChevronLeft,
+  FaBars,
 } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
 import { auth, provider } from "../components/firebase";
@@ -47,6 +48,7 @@ const Login = () => {
   const [welcomePopup, setWelcomePopup] = useState(false);
   const [background, setBackground] = useState<string | null>(null);
   const [currentGuideStep, setCurrentGuideStep] = useState(0);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -158,15 +160,15 @@ const Login = () => {
       <div className="absolute inset-0 bg-black bg-opacity-70"></div>
 
       {/* Lumeo Logo (Positioned at the Top Left) */}
-      <div className="absolute top-5 left-5 flex items-center text-white text-2xl z-10">
+      <div className="absolute top-5 left-5 flex flex-col sm:flex-row items-start sm:items-center text-white text-2xl z-10 gap-2 sm:gap-0">
         <FaRobot className="text-blue-400 mr-2 hover:text-blue-300 transition" />
-        <span className="font-bold">Lumeo AI</span>
+        <span className="font-bold mt-2 sm:mt-0">Lumeo AI</span>
       </div>
 
       {/* Main Content Container */}
-      <div className="relative z-10 w-full max-w-6xl mx-auto flex flex-col items-center justify-center gap-12 px-4">
+      <div className="relative z-10 w-full max-w-6xl mx-auto flex flex-col items-center justify-center gap-12 px-4 mb-32 sm:mb-0">
         {/* Header Content */}
-        <div className="w-full text-white text-center">
+        <div className="w-full text-white text-center mt-20 sm:mt-0">
           <motion.h1
             className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500"
             initial={{ opacity: 0, y: -20 }}
@@ -308,7 +310,7 @@ const Login = () => {
       </div>
 
       {/* Footer */}
-      <div className="absolute bottom-4 left-0 w-full flex justify-center space-x-6 text-gray-400 z-10">
+      <div className="absolute bottom-4 left-0 w-full flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 text-gray-400 z-10">
         <a href="#" className="hover:text-white transition">
           <FontAwesomeIcon icon={faTwitter} size="lg" />
         </a>
@@ -319,6 +321,40 @@ const Login = () => {
           <FontAwesomeIcon icon={faFacebook} size="lg" />
         </a>
       </div>
+
+      {/* Mobile Menu */}
+      {showMobileMenu && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
+          <button
+            className="absolute top-6 right-6 text-white text-3xl"
+            onClick={() => setShowMobileMenu(false)}
+          >
+            &times;
+          </button>
+          <div className="flex flex-col gap-6 text-2xl text-white">
+            <button onClick={() => navigate("/chat")}>Chat</button>
+            <button onClick={() => navigate("/chat?tool=videos")}>
+              Wellness Videos
+            </button>
+            <button onClick={() => navigate("/chat?tool=music")}>Music</button>
+            <button onClick={() => navigate("/chat?tool=image")}>
+              Image Creation
+            </button>
+            <button onClick={() => navigate("/chat?tool=canvas")}>
+              Creative Canvas
+            </button>
+            <button onClick={() => navigate("/chat?tool=story")}>
+              Story Creator
+            </button>
+          </div>
+        </div>
+      )}
+      <button
+        className="fixed top-4 right-4 z-50 sm:hidden bg-gray-800 p-2 rounded-md"
+        onClick={() => setShowMobileMenu(true)}
+      >
+        <FaBars className="text-white text-2xl" />
+      </button>
     </div>
   );
 };
