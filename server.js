@@ -1,4 +1,5 @@
 // server.js
+const path = require("path");
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -386,6 +387,17 @@ app.get('/api/media/assets/latest', async (req, res) => {
   }
 });
 
+// Health check for Fly
+app.get("/api/health", (_req, res) => res.status(200).send("OK"));
+
+// Serve Vite build from /dist
+const distPath = path.join(__dirname, "dist");
+app.use(express.static(distPath));
+
+// Fallback for SPA: serve index.html on all other GETs
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(distPath, "index.html"));
+});
 // Handle all other database interactions needed by the application...
 // Additional endpoints would be needed for chat messages, prompts, etc.
 
