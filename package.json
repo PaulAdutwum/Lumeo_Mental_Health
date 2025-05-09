@@ -12,6 +12,7 @@
     "client:dev": "vite",
     "dev": "vite",
     "build": "tsc && vite build",
+    "vercel-build": "chmod +x vercel-build.sh && ./vercel-build.sh",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy": "gh-pages -d dist",
