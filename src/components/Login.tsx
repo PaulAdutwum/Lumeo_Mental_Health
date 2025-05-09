@@ -160,17 +160,17 @@ const Login = () => {
       <div className="absolute inset-0 bg-black bg-opacity-70"></div>
 
       {/* Lumeo Logo (Positioned at the Top Left) */}
-      <div className="absolute top-5 left-5 flex flex-col sm:flex-row items-start sm:items-center text-white text-2xl z-10 gap-2 sm:gap-0">
+      <div className="absolute top-5 left-5 mb-5 flex flex-col sm:flex-row items-start sm:items-center text-white text-2xl z-10 gap-2 sm:gap-0">
         <FaRobot className="text-blue-400 mr-2 hover:text-blue-300 transition" />
         <span className="font-bold mt-2 sm:mt-0">Lumeo AI</span>
       </div>
 
       {/* Main Content Container */}
-      <div className="relative z-10 w-full max-w-6xl mx-auto flex flex-col items-center justify-center gap-12 px-4 mb-32 sm:mb-0">
+      <div className="relative z-10 w-full max-w-6xl mx-auto flex flex-col items-center justify-center mt-20 gap-12 px-4 mb-32 sm:mb-0">
         {/* Header Content */}
         <div className="w-full text-white text-center mt-20 sm:mt-0">
           <motion.h1
-            className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-500"
+            className="text-5xl md:text-6xl font-bold mb-6 bg-clip-text mt-10 text-transparent bg-gradient-to-r from-blue-400 to-purple-500"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
