@@ -164,9 +164,8 @@ const io = new Server(server, {
 // Import API routes
 import mediaGenRoutes from './api/media-gen/image.js';
 
-
+// Only import and use routes that exist
 app.use('/api/media-gen/image', mediaGenRoutes);
-
 
 // Socket.io event handling
 io.on('connection', (socket) => {

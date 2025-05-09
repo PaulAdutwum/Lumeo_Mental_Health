@@ -37,23 +37,21 @@ const io = new Server(server, {
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
   
-  // Listen for user messages about the canvas
+  // Listen for user messages
   socket.on('user-message', async (data) => {
     try {
       // Process with OpenAI if API key is available
       if (process.env.OPENAI_API_KEY) {
-        const canvasState = data.canvasState ? `The user's canvas has these elements: ${JSON.stringify(data.canvasState.objects?.length || 0)} objects.` : '';
-        
         const response = await openai.chat.completions.create({
           model: 'gpt-4o',
           messages: [
             {
               role: 'system',
-              content: 'You are an AI drawing assistant. You help users improve their drawings by providing helpful suggestions and feedback. Keep responses brief, friendly, and specific to the drawing.'
+              content: 'You are an AI assistant. You help users by providing helpful suggestions and feedback. Keep responses brief, friendly, and specific.'
             },
             {
               role: 'user',
-              content: `${data.text}\n\n${canvasState}`
+              content: data.text
             }
           ],
           temperature: 0.7,
@@ -66,7 +64,7 @@ io.on('connection', (socket) => {
         socket.emit('ai-message', aiMessage);
       } else {
         // Fallback if no API key
-        socket.emit('ai-message', "I notice you're working on a drawing. If you need specific suggestions, please let me know what you're trying to create.");
+        socket.emit('ai-message', "I'm here to help. If you need specific suggestions, please let me know what you're looking for.");
       }
     } catch (error) {
       console.error('Error processing message:', error);

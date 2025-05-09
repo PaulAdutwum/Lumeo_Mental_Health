@@ -4,7 +4,8 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist"
+        "distDir": "dist",
+        "buildCommand": "npm run vercel-build"
       }
     }
   ],
@@ -15,6 +16,18 @@
   "functions": {
     "api/**/*.js": {
       "runtime": "nodejs18.x"
+    }
+  },
+  "env": {
+    "SKIP_CANVAS": "1",
+    "CANVAS_SKIP_INSTALLATION": "1",
+    "npm_config_canvas_skip_installation": "1"
+  },
+  "build": {
+    "env": {
+      "SKIP_CANVAS": "1",
+      "CANVAS_SKIP_INSTALLATION": "1",
+      "npm_config_canvas_skip_installation": "1"
     }
   }
 }

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Skip canvas installation
+export SKIP_CANVAS=1
+export CANVAS_SKIP_INSTALLATION=1
+export npm_config_canvas_skip_installation=1
+
 # Build the front-end
 echo "Building front-end..."
 npm run build

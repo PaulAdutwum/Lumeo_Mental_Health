@@ -18,14 +18,23 @@ export const api = axios.create({
 });
 
 // API endpoints
-export const ENDPOINTS = {
-  // Canvas endpoints
-  CANVAS_SUGGEST: '/api/canvas/suggest',
-  
-  // Media generation endpoints
-  MEDIA_GEN_IMAGE: '/api/media-gen/image',
-  
-  // Health check
+const API_ENDPOINTS = {
+  // User endpoints
+  USER_LOGIN: '/api/users/login',
+  USER_SIGNUP: '/api/users/signup',
+  USER_PROFILE: '/api/users/profile',
+
+  // AI endpoints
+  AI_CHAT: '/api/ai/chat',
+  AI_IMAGE: '/api/media-gen/image',
+
+  // Video endpoints
+  VIDEO_RECOMMENDATIONS: '/api/videos/recommendations',
+  VIDEO_WATCH: '/api/videos/watch',
+  VIDEO_FEEDBACK: '/api/videos/feedback',
+  VIDEO_PREFERENCES: '/api/videos/preferences',
+
+  // Health check endpoint
   HEALTH: '/api/health',
 };
 

@@ -8,13 +8,16 @@ FROM node:${NODE_VERSION}-slim AS builder
 
 WORKDIR /app
 ENV NODE_ENV=production
+ENV SKIP_CANVAS=1
+ENV CANVAS_SKIP_INSTALLATION=1
+ENV npm_config_canvas_skip_installation=1
 
 # Install TypeScript globally to ensure tsc is available
 RUN npm install -g typescript
 
 # Install all npm deps
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --no-optional
 
 # Copy config files
 COPY tsconfig*.json ./
@@ -37,10 +40,13 @@ FROM node:${NODE_VERSION}-slim
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=5000
+ENV SKIP_CANVAS=1
+ENV CANVAS_SKIP_INSTALLATION=1
+ENV npm_config_canvas_skip_installation=1
 
 # Copy runtime files
 COPY package.json ./
-RUN npm install --omit=dev express
+RUN npm install --omit=dev --no-optional express
 
 # Copy built front-end and server code
 COPY --from=builder /app/dist ./dist
