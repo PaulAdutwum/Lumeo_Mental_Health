@@ -89,7 +89,20 @@ app.get('/api/health', (req, res) => {
 
 // Start the server
 const PORT = process.env.PORT || 5000;
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.log(`Port ${PORT} is in use, trying another one...`);
+    setTimeout(() => {
+      server.close();
+      server.listen(0); // Let the OS assign an available port
+    }, 1000);
+  } else {
+    console.error('Server error:', e);
+  }
+});
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+  const address = server.address();
+  const actualPort = typeof address === 'object' ? address.port : PORT;
+  console.log(`Server running on port ${actualPort}`);
 }); 

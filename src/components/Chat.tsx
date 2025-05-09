@@ -42,7 +42,7 @@ interface Message {
   text: string;
   sender: "user" | "ai";
   timestamp: Date;
-  type: "text" | "image" | "video" | "audio" | "canvas";
+  type: "text" | "image" | "video" | "audio";
   mediaUrl?: string;
   emotionAnalysis?: EmotionAnalysis;
 }
@@ -100,8 +100,6 @@ const Chat: React.FC = () => {
   const [showVideoRecommendations, setShowVideoRecommendations] =
     useState(false);
   const [showMusicPlayer, setShowMusicPlayer] = useState(false);
-  // Canvas state - temporarily disabled
-  // const [showCanvas, setShowCanvas] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -129,8 +127,10 @@ const Chat: React.FC = () => {
           alert("Music generation coming soon!");
           break;
         case "canvas":
-          // Show canvas tool when implemented
-          alert("Creative canvas coming soon!");
+          // Show canvas coming soon message
+          alert(
+            "Drawing Canvas coming soon! This feature is currently under development."
+          );
           break;
         case "story":
           // Show story tool when implemented
@@ -180,16 +180,7 @@ const Chat: React.FC = () => {
         setShowMusicPlayer(true);
       },
     },
-    {
-      id: "canvas",
-      name: "Canvas",
-      icon: <FaPaintBrush className="text-yellow-500" />,
-      description: "Draw with AI assistance",
-      action: () => {
-        setActiveTool("canvas");
-        showDrawingCanvas();
-      },
-    },
+
     {
       id: "mood",
       name: "Mood",
@@ -211,15 +202,6 @@ const Chat: React.FC = () => {
       },
     },
   ];
-
-  // Function to show the drawing canvas
-  const showDrawingCanvas = () => {
-    // Instead of showing the actual canvas, display a coming soon message
-    alert(
-      "Drawing Canvas coming soon! This feature is currently under development."
-    );
-    // Not setting showCanvas to true so the actual canvas component won't be rendered
-  };
 
   // Start a breathing exercise
   const startBreathingExercise = (intensity?: number) => {
@@ -761,13 +743,6 @@ const Chat: React.FC = () => {
                   )}
                   {message.type === "audio" && message.mediaUrl && (
                     <audio src={message.mediaUrl} controls className="w-full" />
-                  )}
-                  {message.type === "canvas" && message.mediaUrl && (
-                    <img
-                      src={message.mediaUrl}
-                      alt="Canvas drawing"
-                      className="rounded-lg max-w-full h-auto"
-                    />
                   )}
                   <div className="text-xs text-gray-400 mt-1">
                     {message.timestamp.toLocaleTimeString([], {

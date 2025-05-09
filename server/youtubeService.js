@@ -1,6 +1,8 @@
-const axios = require('axios');
-const { Pool } = require('pg');
-require('dotenv').config();
+import axios from 'axios';
+import { Pool } from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Initialize PostgreSQL connection pool
 const pool = new Pool({
@@ -213,7 +215,7 @@ async function updateVideoFeedback(userId, videoId, feedback, emotionAfter) {
   }
 }
 
-module.exports = {
+export {
   getVideoRecommendations,
   saveUserVideoPreferences,
   logVideoWatch,
