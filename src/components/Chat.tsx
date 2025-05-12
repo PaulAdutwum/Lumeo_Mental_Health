@@ -23,6 +23,9 @@ import {
   FaExclamationTriangle,
   FaTimes,
   FaBars,
+  FaUserFriends,
+  FaMedal,
+  FaHandsHelping,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -36,6 +39,7 @@ import VideoRecommendations from "./VideoRecommendations";
 // Keep import for future use but comment to show it's inactive
 import MusicPage from "./MusicPage";
 import SimpleVideoPlayer from "./SimpleVideoPlayer";
+import { supabase } from "../utils/supabaseClient";
 
 // Message type definition
 interface Message {
@@ -85,7 +89,7 @@ const Chat: React.FC = () => {
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [showBreathingExercise, setShowBreathingExercise] = useState(false);
   const [breathingSettings, setBreathingSettings] = useState({
-    inhale: 4,
+    inhale: 5,
     hold: 2,
     exhale: 4,
     holdAfterExhale: 0,
@@ -102,6 +106,19 @@ const Chat: React.FC = () => {
     useState(false);
   const [showMusicPlayer, setShowMusicPlayer] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showJourneyModal, setShowJourneyModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [journeyLoading, setJourneyLoading] = useState(false);
+  const [journeyError, setJourneyError] = useState<string | null>(null);
+  const [streak, setStreak] = useState<number>(0);
+  const [achievements, setAchievements] = useState<string[]>([]);
+  const [showCongrats, setShowCongrats] = useState(false);
+  const [showCounselorChat, setShowCounselorChat] = useState(false);
+  const [counselorName, setCounselorName] = useState<string | null>(null);
+  const [counselorMessages, setCounselorMessages] = useState<
+    { sender: "user" | "counselor"; text: string }[]
+  >([]);
+  const [counselorInput, setCounselorInput] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -612,6 +629,103 @@ const Chat: React.FC = () => {
     });
   };
 
+  useEffect(() => {
+    if (showJourneyModal) {
+      setJourneyLoading(true);
+      setJourneyError(null);
+      (async () => {
+        try {
+          // Use localStorage to track streak and achievements
+          const today = new Date().toISOString().split("T")[0];
+          const lastVisit = localStorage.getItem("lumeo_last_visit");
+          let streakCount = parseInt(
+            localStorage.getItem("lumeo_streak") || "0",
+            10
+          );
+          let milestones = JSON.parse(
+            localStorage.getItem("lumeo_achievements") || "[]"
+          );
+          let newStreak = false;
+          if (!lastVisit) {
+            streakCount = 1;
+            milestones = [];
+            newStreak = true;
+          } else {
+            const prev = new Date(lastVisit);
+            const curr = new Date(today);
+            const diff =
+              (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+            if (diff === 1) {
+              streakCount++;
+              newStreak = true;
+            } else if (diff > 1) {
+              streakCount = 1;
+              milestones = [];
+              newStreak = true;
+            }
+          }
+          localStorage.setItem("lumeo_last_visit", today);
+          localStorage.setItem("lumeo_streak", streakCount.toString());
+          // Achievements
+          const ach: string[] = [];
+          if (streakCount >= 1) ach.push("First Day!");
+          if (streakCount >= 3 && !milestones.includes("3 Days Streak")) {
+            ach.push("3 Days Streak");
+            milestones.push("3 Days Streak");
+            setShowCongrats(true);
+            setTimeout(() => setShowCongrats(false), 3000);
+          }
+          if (streakCount >= 7 && !milestones.includes("7 Days Streak")) {
+            ach.push("7 Days Streak");
+            milestones.push("7 Days Streak");
+            setShowCongrats(true);
+            setTimeout(() => setShowCongrats(false), 3000);
+          }
+          localStorage.setItem(
+            "lumeo_achievements",
+            JSON.stringify(milestones)
+          );
+          setStreak(streakCount);
+          setAchievements([
+            ...milestones,
+            ...ach.filter((a) => !milestones.includes(a)),
+          ]);
+        } catch (err: any) {
+          setJourneyError("Error loading journey data");
+        } finally {
+          setJourneyLoading(false);
+        }
+      })();
+    }
+  }, [showJourneyModal]);
+
+  // Helper to open chat with counselor
+  const openCounselorChat = (name: string) => {
+    setCounselorName(name);
+    setCounselorMessages([]);
+    setShowCounselorChat(true);
+  };
+
+  // Helper to send message in counselor chat
+  const sendCounselorMessage = () => {
+    if (!counselorInput.trim()) return;
+    setCounselorMessages((prev) => [
+      ...prev,
+      { sender: "user", text: counselorInput },
+    ]);
+    // Simulate counselor response
+    setTimeout(() => {
+      setCounselorMessages((prev) => [
+        ...prev,
+        {
+          sender: "counselor",
+          text: "Thank you for reaching out. How can I help you today?",
+        },
+      ]);
+    }, 1000);
+    setCounselorInput("");
+  };
+
   return (
     <div className="flex h-screen bg-gray-900 text-white overflow-hidden">
       {/* Hamburger menu for mobile */}
@@ -748,6 +862,33 @@ const Chat: React.FC = () => {
               </button>
             ))}
           </div>
+          {/* Streak and Achievements below tool buttons */}
+          <div className="mt-8 flex flex-col items-center">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">🔥</span>
+              <span className="font-semibold text-yellow-400">{streak}</span>
+              <span className="text-xs text-gray-300">day streak</span>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-3 mb-2">
+              <div
+                className="bg-blue-500 h-3 rounded-full"
+                style={{ width: `${Math.min(streak * 10, 100)}%` }}
+              ></div>
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <FaMedal className="text-yellow-400 text-lg" />
+              <span className="font-semibold text-sm text-gray-200">
+                Achievements
+              </span>
+            </div>
+            <ul className="list-disc list-inside text-xs text-gray-300">
+              {achievements.length === 0 ? (
+                <li>No achievements yet.</li>
+              ) : (
+                achievements.map((ach, i) => <li key={i}>{ach}</li>)
+              )}
+            </ul>
+          </div>
         </div>
 
         <div className="mt-4">
@@ -771,8 +912,8 @@ const Chat: React.FC = () => {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-gray-800 p-4 flex items-center justify-between">
-          <div className="flex items-center">
+        <header className="bg-gray-800 p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold">
               {activeTool
                 ? tools.find((t) => t.id === activeTool)?.name || "Chat"
@@ -786,7 +927,21 @@ const Chat: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="flex gap-2 items-center">
+          <div className="flex gap-2 items-center w-full md:w-auto justify-center md:justify-end">
+            <button
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
+              onClick={() => setShowJourneyModal(true)}
+            >
+              <FaMedal className="text-lg" />
+              <span>My Journey</span>
+            </button>
+            <button
+              className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
+              onClick={() => setShowHelpModal(true)}
+            >
+              <FaHandsHelping className="text-lg" />
+              <span>Get Help Now</span>
+            </button>
             <button
               className={`p-2 rounded-full ${
                 voiceFeedback ? "bg-blue-600" : "hover:bg-gray-700"
@@ -1035,6 +1190,212 @@ const Chat: React.FC = () => {
 
         {showMusicPlayer && (
           <MusicPage onClose={() => setShowMusicPlayer(false)} />
+        )}
+
+        {showJourneyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
+            <div className="bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-md mx-4 relative">
+              <button
+                className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl"
+                onClick={() => setShowJourneyModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+              <h2 className="text-2xl font-bold mb-4 text-center text-gradient bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                My Journey
+              </h2>
+              {showCongrats && (
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1.1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  className="flex flex-col items-center justify-center mb-4"
+                >
+                  <span className="text-4xl">🎉</span>
+                  <span className="text-lg font-bold text-green-400 mt-2">
+                    Congratulations on your streak!
+                  </span>
+                </motion.div>
+              )}
+              {journeyLoading ? (
+                <div className="flex justify-center items-center h-32">
+                  <FaSpinner className="animate-spin text-3xl text-blue-400" />
+                </div>
+              ) : journeyError ? (
+                <div className="text-red-400 text-center mb-4">
+                  {journeyError}
+                </div>
+              ) : (
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-2xl">🔥</span>
+                    <span className="font-semibold">Daily Streak</span>
+                    <span className="ml-2 text-lg text-yellow-400 font-bold">
+                      {streak}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-4 mb-2">
+                    <div
+                      className="bg-blue-500 h-4 rounded-full"
+                      style={{ width: `${Math.min(streak * 10, 100)}%` }}
+                    ></div>
+                  </div>
+                  <div className="text-xs text-gray-400 mb-4">
+                    {streak
+                      ? `${streak} day${
+                          streak > 1 ? "s" : ""
+                        } in a row! Keep it up!`
+                      : "No streak yet. Start today!"}
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <FaUserFriends className="text-green-400 text-xl" />
+                    <span className="font-semibold">Achievements</span>
+                  </div>
+                  <ul className="list-disc list-inside text-sm text-gray-200">
+                    {achievements.length === 0 ? (
+                      <li>No achievements yet.</li>
+                    ) : (
+                      achievements.map((ach, i) => <li key={i}>{ach}</li>)
+                    )}
+                  </ul>
+                </div>
+              )}
+              <button
+                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
+                onClick={() => setShowJourneyModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showHelpModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
+            <div className="bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-md mx-4 relative">
+              <button
+                className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl"
+                onClick={() => setShowHelpModal(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+              <h2 className="text-2xl font-bold mb-4 text-center text-gradient bg-gradient-to-r from-pink-400 to-red-400 bg-clip-text text-transparent">
+                Get Help Now
+              </h2>
+              {/* Placeholder for real-time counselors, replace with API integration */}
+              <div className="mb-6">
+                <div className="flex flex-col gap-4">
+                  <div className="bg-gray-800 rounded-lg p-4 flex flex-col gap-2">
+                    <span className="font-semibold text-lg text-pink-300">
+                      Dr. Jane Smith
+                    </span>
+                    <span className="text-sm text-gray-300">
+                      Licensed Therapist - 2 miles away
+                    </span>
+                    <button
+                      className="mt-2 bg-pink-500 hover:bg-pink-600 text-white py-1 px-3 rounded transition"
+                      onClick={() => {
+                        setShowHelpModal(false);
+                        openCounselorChat("Dr. Jane Smith");
+                      }}
+                    >
+                      Chat Now
+                    </button>
+                  </div>
+                  <div className="bg-gray-800 rounded-lg p-4 flex flex-col gap-2">
+                    <span className="font-semibold text-lg text-pink-300">
+                      Counselor John Doe
+                    </span>
+                    <span className="text-sm text-gray-300">
+                      Community Support - 5 miles away
+                    </span>
+                    <button
+                      className="mt-2 bg-pink-500 hover:bg-pink-600 text-white py-1 px-3 rounded transition"
+                      onClick={() => {
+                        setShowHelpModal(false);
+                        openCounselorChat("Counselor John Doe");
+                      }}
+                    >
+                      Chat Now
+                    </button>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-400 mt-4">
+                  * Real-time counselor data will be shown here based on your
+                  location.
+                </div>
+              </div>
+              <button
+                className="w-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
+                onClick={() => setShowHelpModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Counselor Chat Modal */}
+        {showCounselorChat && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+            <div className="bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-md mx-4 relative flex flex-col">
+              <button
+                className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl"
+                onClick={() => setShowCounselorChat(false)}
+                aria-label="Close"
+              >
+                <FaTimes />
+              </button>
+              <h2 className="text-xl font-bold mb-2 text-center text-gradient bg-gradient-to-r from-pink-400 to-red-400 bg-clip-text text-transparent">
+                Chat with {counselorName}
+              </h2>
+              <div className="flex-1 overflow-y-auto mb-4 max-h-60">
+                {counselorMessages.length === 0 && (
+                  <div className="text-gray-400 text-center mt-4">
+                    Start the conversation!
+                  </div>
+                )}
+                {counselorMessages.map((msg, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex ${
+                      msg.sender === "user" ? "justify-end" : "justify-start"
+                    } mb-2`}
+                  >
+                    <div
+                      className={`rounded-lg px-3 py-2 max-w-[70%] ${
+                        msg.sender === "user"
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-700 text-white"
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="text"
+                  value={counselorInput}
+                  onChange={(e) => setCounselorInput(e.target.value)}
+                  onKeyPress={(e) =>
+                    e.key === "Enter" && sendCounselorMessage()
+                  }
+                  placeholder="Type your message..."
+                  className="flex-1 bg-gray-700 text-white rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                />
+                <button
+                  className="p-2 rounded-full bg-pink-500 hover:bg-pink-600 text-white"
+                  onClick={sendCounselorMessage}
+                >
+                  <FaPaperPlane />
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </AnimatePresence>
     </div>
