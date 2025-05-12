@@ -108,7 +108,7 @@ const Login = () => {
     {
       title: "Get Personalized Recommendations",
       description:
-        "Receive tailored therapeutic content like videos, music, and activities based on your emotional state.",
+        "Receive tailored therapeutic content like videos, musicmusic🎧, and activities based on your emotional state.",
       icon: <FaHeart className="text-red-500 text-3xl mb-3" />,
     },
     {
@@ -161,7 +161,7 @@ const Login = () => {
 
       {/* Lumeo Logo (Positioned at the Top Left) */}
       <div className="absolute top-5 left-5 mb-5 flex flex-col sm:flex-row items-start sm:items-center text-white text-2xl z-10 gap-2 sm:gap-0">
-        <FaRobot className="text-blue-400 mr-2 hover:text-blue-300 transition" />
+        <FaBrain className="text-blue-400 mr-2 hover:text-blue-300 transition" />
         <span className="font-bold mt-2 sm:mt-0">Lumeo AI</span>
       </div>
 
@@ -240,7 +240,7 @@ const Login = () => {
               whileTap={{ scale: 0.98 }}
               onClick={() => navigate("/chat")}
             >
-              Start Your Wellness Journey
+              Start Your Wellness Journey Now
             </motion.button>
           </motion.div>
 
@@ -311,7 +311,7 @@ const Login = () => {
 
       {/* Footer */}
       <div className="absolute bottom-4 left-0 w-full flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6 text-gray-400 z-10">
-        <a href="#" className="hover:text-white transition">
+        <a href="" className="hover:text-white transition">
           <FontAwesomeIcon icon={faTwitter} size="lg" />
         </a>
         <a href="#" className="hover:text-white transition">
