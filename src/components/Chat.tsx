@@ -62,6 +62,113 @@ interface Tool {
   action: () => void;
 }
 
+// Add types for counselor and counselor chat message
+interface Counselor {
+  name: string;
+  specialty: string;
+  city: string;
+  distance: string;
+  avatar: string;
+}
+interface CounselorChatMessage {
+  sender: "user" | "counselor";
+  text: string;
+}
+
+// Add counselor data and locations for the Get Help Now modal
+const COUNSELORS: Counselor[] = [
+  {
+    name: "Dr. Jane Smith",
+    specialty: "Licensed Therapist",
+    city: "New York",
+    distance: "2 miles",
+    avatar: "🧑‍⚕️",
+  },
+  {
+    name: "John Coulombe",
+    specialty: "Community Support",
+    city: "New York",
+    distance: "5 miles",
+    avatar: "🧑‍💼",
+  },
+  {
+    name: "Dr. Emily Lee",
+    specialty: "Psychologist",
+    city: "San Francisco",
+    distance: "1 mile",
+    avatar: "👩‍⚕️",
+  },
+  {
+    name: "Sarah Kim",
+    specialty: "Counselor",
+    city: "San Francisco",
+    distance: "3 miles",
+    avatar: "👩‍💼",
+  },
+  {
+    name: "Dr. Alex Brown",
+    specialty: "Therapist",
+    city: "Chicago",
+    distance: "4 miles",
+    avatar: "🧑‍⚕️",
+  },
+  {
+    name: "Lisa Green",
+    specialty: "Support Worker",
+    city: "Chicago",
+    distance: "2 miles",
+    avatar: "👩‍💼",
+  },
+  {
+    name: "Dr. Olivia White",
+    specialty: "Licensed Therapist",
+    city: "Maine",
+    distance: "3 miles",
+    avatar: "🧑‍⚕️",
+  },
+  {
+    name: "Ethan Brooks",
+    specialty: "Community Support",
+    city: "Maine",
+    distance: "7 miles",
+    avatar: "🧑‍💼",
+  },
+  {
+    name: "Dr. Sophia Carter",
+    specialty: "Psychologist",
+    city: "Massachusetts",
+    distance: "2 miles",
+    avatar: "👩‍⚕️",
+  },
+  {
+    name: "Michael Lee",
+    specialty: "Counselor",
+    city: "Massachusetts",
+    distance: "6 miles",
+    avatar: "🧑‍💼",
+  },
+  {
+    name: "Dr. Ava Martinez",
+    specialty: "Therapist",
+    city: "Rhode Island",
+    distance: "1 mile",
+    avatar: "🧑‍⚕️",
+  },
+  {
+    name: "Grace Turner",
+    specialty: "Support Worker",
+    city: "Rhode Island",
+    distance: "5 miles",
+    avatar: "👩‍💼",
+  },
+];
+const LOCATIONS = [
+  ...Array.from(new Set(COUNSELORS.map((c) => c.city))),
+  "Maine",
+  "Massachusetts",
+  "Rhode Island",
+];
+
 const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -120,6 +227,13 @@ const Chat: React.FC = () => {
     { sender: "user" | "counselor"; text: string }[]
   >([]);
   const [counselorInput, setCounselorInput] = useState("");
+  const [helpLocation, setHelpLocation] = useState("");
+  const [selectedCounselor, setSelectedCounselor] = useState<Counselor | null>(
+    null
+  );
+  const [counselorChat, setCounselorChat] = useState<CounselorChatMessage[]>(
+    []
+  );
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -727,6 +841,37 @@ const Chat: React.FC = () => {
     setCounselorInput("");
   };
 
+  // Add this function inside Chat component
+  function sendCounselorChat() {
+    if (!counselorInput.trim()) return;
+    setCounselorChat((prev) => [
+      ...prev,
+      { sender: "user", text: counselorInput },
+    ]);
+    setCounselorInput("");
+    setTimeout(() => {
+      setCounselorChat((prev) => [
+        ...prev,
+        {
+          sender: "counselor",
+          text: "Thank you for reaching out. How can I help you further?",
+        },
+      ]);
+    }, 1000);
+  }
+
+  // Add a function to get dynamic streak achievement message
+  function getStreakAchievementMessage(streak: number): string {
+    if (streak <= 0) return "Start your journey today!";
+    if (streak === 1) return "Great start! 1 day streak!";
+    if (streak === 3) return "Amazing! 3 days of consistency!";
+    if (streak === 7) return "Incredible! 7 days in a row!";
+    if (streak > 7 && streak < 30)
+      return `🔥 ${streak} day streak! Keep it going!`;
+    if (streak >= 30) return `🏆 ${streak} days! You're a legend!`;
+    return `Streak: ${streak} days!`;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col md:flex-row">
       {/* Hamburger menu for mobile */}
@@ -1197,12 +1342,9 @@ const Chat: React.FC = () => {
                       style={{ width: `${Math.min(streak * 10, 100)}%` }}
                     ></div>
                   </div>
-                  <div className="text-xs text-gray-400 mb-4">
-                    {streak
-                      ? `${streak} day${
-                          streak > 1 ? "s" : ""
-                        } in a row! Keep it up!`
-                      : "No streak yet. Start today!"}
+                  {/* Dynamic streak achievement message */}
+                  <div className="text-base text-blue-300 font-semibold text-center mb-2">
+                    {getStreakAchievementMessage(streak)}
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     <FaUserFriends className="text-green-400 text-xl" />
@@ -1229,66 +1371,164 @@ const Chat: React.FC = () => {
 
         {showHelpModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
-            <div className="bg-gray-900 rounded-lg shadow-lg p-6 w-full max-w-md mx-4 relative">
+            <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-2xl relative">
               <button
-                className="absolute top-3 right-3 text-gray-400 hover:text-white text-2xl"
-                onClick={() => setShowHelpModal(false)}
+                className="absolute top-3 right-3 text-gray-400 hover:text-blue-600 text-2xl"
+                onClick={() => {
+                  setShowHelpModal(false);
+                  setHelpLocation("");
+                  setSelectedCounselor(null);
+                  setCounselorChat([]);
+                }}
                 aria-label="Close"
               >
                 <FaTimes />
               </button>
-              <h2 className="text-2xl font-bold mb-4 text-center text-gradient bg-gradient-to-r from-pink-400 to-red-400 bg-clip-text text-transparent">
-                Get Help Now
+              <h2 className="text-3xl font-bold text-blue-700 mb-6 text-center">
+                Find Help Near You
               </h2>
-              {/* Placeholder for real-time counselors, replace with API integration */}
-              <div className="mb-6">
-                <div className="flex flex-col gap-4">
-                  <div className="bg-gray-800 rounded-lg p-4 flex flex-col gap-2">
-                    <span className="font-semibold text-lg text-pink-300">
-                      Dr. Jane Smith
-                    </span>
-                    <span className="text-sm text-gray-300">
-                      Licensed Therapist - 2 miles away
-                    </span>
-                    <button
-                      className="mt-2 bg-pink-500 hover:bg-pink-600 text-white py-1 px-3 rounded transition"
-                      onClick={() => {
-                        setShowHelpModal(false);
-                        openCounselorChat("Dr. Jane Smith");
-                      }}
+              {!selectedCounselor ? (
+                <>
+                  <div className="mb-8">
+                    <label
+                      htmlFor="location"
+                      className="block text-lg font-medium text-gray-700 mb-2"
                     >
-                      Chat Now
-                    </button>
-                  </div>
-                  <div className="bg-gray-800 rounded-lg p-4 flex flex-col gap-2">
-                    <span className="font-semibold text-lg text-pink-300">
-                      Counselor John Doe
-                    </span>
-                    <span className="text-sm text-gray-300">
-                      Community Support - 5 miles away
-                    </span>
-                    <button
-                      className="mt-2 bg-pink-500 hover:bg-pink-600 text-white py-1 px-3 rounded transition"
-                      onClick={() => {
-                        setShowHelpModal(false);
-                        openCounselorChat("Counselor John Doe");
-                      }}
+                      Select your location:
+                    </label>
+                    <select
+                      id="location"
+                      className="w-full p-3 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-lg"
+                      value={helpLocation}
+                      onChange={(e) => setHelpLocation(e.target.value)}
                     >
-                      Chat Now
-                    </button>
+                      <option value="">-- Choose a city --</option>
+                      {LOCATIONS.map((city) => (
+                        <option key={city} value={city}>
+                          {city}
+                        </option>
+                      ))}
+                    </select>
                   </div>
+                  {helpLocation && (
+                    <div>
+                      <h3 className="text-xl font-semibold text-blue-600 mb-4">
+                        Recommended Counselors in {helpLocation}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {COUNSELORS.filter((c) => c.city === helpLocation).map(
+                          (counselor, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-gray-800 border border-gray-700 text-white rounded-xl p-5 flex flex-col items-center shadow hover:shadow-lg transition"
+                            >
+                              <div className="text-5xl mb-2">
+                                {counselor.avatar}
+                              </div>
+                              <div className="text-lg font-bold text-blue-800 mb-1">
+                                {counselor.name}
+                              </div>
+                              <div className="text-blue-600 mb-1">
+                                {counselor.specialty}
+                              </div>
+                              <div className="text-gray-500 mb-2">
+                                {counselor.distance} away
+                              </div>
+                              <button
+                                className="mt-2 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold py-2 px-6 rounded-lg shadow transition"
+                                onClick={() => {
+                                  setSelectedCounselor(counselor);
+                                  setCounselorChat([
+                                    {
+                                      sender: "counselor",
+                                      text: `Hi, I'm ${counselor.name}. How can I help you today?`,
+                                    },
+                                  ]);
+                                }}
+                              >
+                                Chat Now
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                      {COUNSELORS.filter((c) => c.city === helpLocation)
+                        .length === 0 && (
+                        <div className="text-gray-400 text-center mt-6">
+                          No counselors found for this location.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <div className="text-5xl mb-2">
+                    {selectedCounselor.avatar}
+                  </div>
+                  <div className="text-lg font-bold text-blue-800 mb-1">
+                    {selectedCounselor.name}
+                  </div>
+                  <div className="text-blue-600 mb-1">
+                    {selectedCounselor.specialty}
+                  </div>
+                  <div className="text-gray-500 mb-2">
+                    {selectedCounselor.distance} away
+                  </div>
+                  <div className="w-full max-w-md bg-gray-800 border border-gray-700 text-white rounded-xl p-4 my-4">
+                    <div className="h-48 overflow-y-auto mb-2">
+                      {counselorChat.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`mb-2 flex ${
+                            msg.sender === "user"
+                              ? "justify-end"
+                              : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`rounded-lg px-3 py-2 max-w-[70%] ${
+                              msg.sender === "user"
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-700 text-white"
+                            }`}
+                          >
+                            {msg.text}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="text"
+                        value={counselorInput}
+                        onChange={(e) => setCounselorInput(e.target.value)}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" && sendCounselorChat()
+                        }
+                        placeholder="Type your message..."
+                        className="flex-1 bg-gray-900 text-white rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      />
+                      <button
+                        className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+                        onClick={sendCounselorChat}
+                      >
+                        <FaPaperPlane />
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    className="mt-4 bg-gray-200 hover:bg-gray-300 text-blue-700 font-semibold py-2 px-6 rounded-lg shadow transition"
+                    onClick={() => {
+                      setSelectedCounselor(null);
+                      setCounselorChat([]);
+                      setCounselorInput("");
+                    }}
+                  >
+                    Back to Counselors
+                  </button>
                 </div>
-                <div className="text-xs text-gray-400 mt-4">
-                  * Real-time counselor data will be shown here based on your
-                  location.
-                </div>
-              </div>
-              <button
-                className="w-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
-                onClick={() => setShowHelpModal(false)}
-              >
-                Close
-              </button>
+              )}
             </div>
           </div>
         )}
@@ -1341,7 +1581,7 @@ const Chat: React.FC = () => {
                     e.key === "Enter" && sendCounselorMessage()
                   }
                   placeholder="Type your message..."
-                  className="flex-1 bg-gray-700 text-white rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  className="flex-1 bg-gray-900 text-white rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
                 <button
                   className="p-2 rounded-full bg-pink-500 hover:bg-pink-600 text-white"
