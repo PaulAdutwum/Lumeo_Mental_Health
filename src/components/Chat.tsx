@@ -913,31 +913,31 @@ const Chat: React.FC = () => {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col max-w-full w-full md:w-2/3 mx-auto p-2 md:p-6">
         {/* Header */}
-        <header className="bg-gray-800 p-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold">
+        <header className="w-full max-w-4xl mx-auto mt-4 mb-4 bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 shadow-lg rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <h1 className="text-xl font-bold truncate">
               {activeTool
                 ? tools.find((t) => t.id === activeTool)?.name || "Chat"
                 : "Chat"}
             </h1>
             {lastEmotion && (
-              <div className="ml-4 px-3 py-1 bg-gray-700 rounded-full text-xs">
+              <div className="ml-4 px-3 py-1 bg-gray-700 rounded-full text-xs truncate">
                 Mood:{" "}
                 {lastEmotion.primaryEmotion.charAt(0).toUpperCase() +
                   lastEmotion.primaryEmotion.slice(1)}
               </div>
             )}
           </div>
-          <div className="flex gap-2 items-center w-full md:w-auto justify-center md:justify-end">
+          <div className="flex flex-wrap gap-2 items-center justify-end w-full md:w-auto">
             <button
-              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-blue-600 hover:to-purple-600 text-white font-bold py-2 px-4 rounded-lg shadow transition whitespace-nowrap"
               onClick={() => setShowJourneyModal(true)}
             >
               <FaMedal className="text-lg" />
               <span>My Journey</span>
             </button>
             <button
-              className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
+              className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-red-600 hover:to-pink-600 text-white font-bold py-2 px-4 rounded-lg shadow transition whitespace-nowrap"
               onClick={() => setShowHelpModal(true)}
             >
               <FaHandsHelping className="text-lg" />
@@ -957,7 +957,7 @@ const Chat: React.FC = () => {
               {voiceFeedback ? <FaVolumeUp /> : <FaVolumeMute />}
             </button>
             <button
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition whitespace-nowrap"
               onClick={() => navigate("/movies")}
             >
               Explore Movies & Videos
@@ -974,7 +974,7 @@ const Chat: React.FC = () => {
 
         {/* Messages area */}
         <div
-          className="flex-1 overflow-y-auto mb-2 md:mb-4 px-1 md:px-4"
+          className="flex-1 overflow-y-auto mt-2 mb-2 md:mb-4 px-1 md:px-4"
           style={{ maxHeight: "70vh" }}
         >
           <AnimatePresence>
@@ -1089,7 +1089,7 @@ const Chat: React.FC = () => {
         )}
 
         {/* Input area */}
-        <div className="flex items-center gap-2 mt-2 w-full">
+        <div className="flex items-center gap-2 mt-2 w-full mb-2">
           <input
             type="text"
             value={inputText}
