@@ -26,6 +26,7 @@ import {
   FaUserFriends,
   FaMedal,
   FaHandsHelping,
+  FaComment,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -164,7 +165,7 @@ const Chat: React.FC = () => {
     {
       id: "text",
       name: "Chat",
-      icon: <FaRobot className="text-blue-500" />,
+      icon: <FaComment className="text-blue-500" />,
       description: "Chat with Lumeo AI",
       action: () => setActiveTool("text"),
     },
@@ -842,7 +843,7 @@ const Chat: React.FC = () => {
         } md:flex`}
       >
         <div className="flex items-center justify-center md:justify-start mb-8">
-          <FaRobot className="text-blue-400 text-xl md:mr-2" />
+          <FaBrain className="text-blue-400 text-xl md:mr-2" />
           <span className="hidden md:block font-bold text-xl">Lumeo AI</span>
         </div>
 
