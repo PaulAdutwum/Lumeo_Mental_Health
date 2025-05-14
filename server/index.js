@@ -316,6 +316,11 @@ app.post('/api/videos/preferences', async (req, res) => {
   }
 });
 
+// Add this after all other routes, before server.listen
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+});
+
 // Start the server
 const PORT = process.env.PORT || 3001;
 
