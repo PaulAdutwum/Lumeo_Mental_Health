@@ -728,7 +728,7 @@ const Chat: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-900 text-white overflow-hidden">
+    <div className="min-h-screen bg-gray-900 text-white flex flex-col md:flex-row">
       {/* Hamburger menu for mobile */}
       <button
         className="md:hidden fixed top-4 left-4 z-50 bg-gray-800 p-2 rounded-md"
@@ -911,7 +911,7 @@ const Chat: React.FC = () => {
       </div>
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col max-w-full w-full md:w-2/3 mx-auto p-2 md:p-6">
         {/* Header */}
         <header className="bg-gray-800 p-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -973,7 +973,10 @@ const Chat: React.FC = () => {
         </header>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div
+          className="flex-1 overflow-y-auto mb-2 md:mb-4 px-1 md:px-4"
+          style={{ maxHeight: "70vh" }}
+        >
           <AnimatePresence>
             {messages.map((message) => (
               <motion.div
@@ -1086,69 +1089,21 @@ const Chat: React.FC = () => {
         )}
 
         {/* Input area */}
-        <div className="p-4 border-t border-gray-700 bg-gray-800">
-          <div className="flex items-center">
-            <button
-              className={`p-2 rounded-full mr-2 ${
-                showToolbar ? "bg-blue-600" : "hover:bg-gray-700"
-              }`}
-              onClick={() => setShowToolbar(!showToolbar)}
-            >
-              <FaCog />
-            </button>
-
-            <AnimatePresence>
-              {showToolbar && (
-                <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: "auto", opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  className="flex space-x-2 mr-2 overflow-hidden"
-                >
-                  {tools.map((tool) => (
-                    <button
-                      key={tool.id}
-                      onClick={tool.action}
-                      className="p-2 rounded-full hover:bg-gray-700"
-                      title={tool.description}
-                    >
-                      {tool.icon}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Type your message..."
-              className="flex-1 bg-gray-700 text-white rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-
-            <button
-              className={`p-2 rounded-full ml-2 ${
-                isListening ? "bg-red-500" : "hover:bg-gray-700"
-              }`}
-              onClick={handleVoiceInput}
-            >
-              {isListening ? (
-                <FaSpinner className="animate-spin" />
-              ) : (
-                <FaMicrophone />
-              )}
-            </button>
-
-            <button
-              className="p-2 rounded-full ml-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
-              onClick={sendMessage}
-              disabled={inputText.trim() === ""}
-            >
-              <FaPaperPlane />
-            </button>
-          </div>
+        <div className="flex items-center gap-2 mt-2 w-full">
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+            placeholder="Type your message..."
+            className="flex-1 bg-gray-700 text-white rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-base md:text-lg"
+          />
+          <button
+            className="p-2 rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+            onClick={sendMessage}
+          >
+            <FaPaperPlane />
+          </button>
         </div>
       </div>
 
