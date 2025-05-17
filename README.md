@@ -1,15 +1,40 @@
-# Lumeo - Mental Wellness Companion
 
-Lumeo is a mental wellness companion application designed to support users through AI conversation, creative tools, and curated content.
+# Lumeo – AI-Powered Mental Wellness Companion
+
+Lumeo is an intelligent mental wellness companion that blends conversational AI, emotional-intelligence analysis, image generation, and personalized counselor recommendations to support your journey toward better mental health. Built on OpenAI GPT-4 for empathy-driven dialogue, DALL·E for therapeutic imagery, and Pinecone for fast vector search, Lumeo connects you to curated self-care tools, local mental health resources, and licensed professionals.
+
+---
+
+## Project URL
+
+[https://lumeo/herokuapp.com](https://lumeo-08ac7545d700.herokuapp.com/)
+
+---
 
 ## Setup
 
 ### Environment Variables
 
-Create a `.env` file in the project root with the following variables:
+Create a file named `.env` in the project root and populate it with:
 
 ```
-VITE_YOUTUBE_API_KEY=your_actual_youtube_api_key
+# YouTube & TMDB
+VITE_YOUTUBE_API_KEY=your_youtube_api_key
+VITE_TMDB_API_KEY=your_tmdb_api_key
+
+# OpenAI & DALL·E
+OPENAI_API_KEY=your_openai_api_key
+
+# Pinecone (vector DB for semantic search)
+PINECONE_API_KEY=your_pinecone_api_key
+PINECONE_ENVIRONMENT=your_pinecone_environment
+
+# AWS (media & data storage)
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
+AWS_S3_BUCKET=lumeo-assets
+
 ```
 
 ### YouTube API Key
