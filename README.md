@@ -7,7 +7,7 @@ Lumeo is an intelligent mental wellness companion that blends conversational AI,
 
 ## Project URL
 
-[https://lumeo/herokuapp.com](https://lumeo-08ac7545d700.herokuapp.com/)
+[https://lumeo/herokuapp.com](https://lumeo.surge.sh/chat)
 
 ---
 
